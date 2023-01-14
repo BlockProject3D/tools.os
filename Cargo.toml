@@ -14,18 +14,27 @@ categories = []
 
 [dependencies]
 
+# Normal dependencies
+once_cell = {version = "1.17.0", optional = true }
+
+# Apple and BSD
+[target.'cfg(any(target_os = "freebsd", target_vendor = "apple"))'.dependencies]
+libc = { version = "0.2", optional = true }
+
 [target.'cfg(target_vendor = "apple")'.dependencies]
 objc = { version = "0.2.7", optional = true }
 objc-foundation = { version = "0.1.1", optional = true }
 
+# Windows
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.42.0", features = ["Win32_UI_Shell", "Win32_Foundation", "Win32_System_Com", "Win32_UI_WindowsAndMessaging", "Win32_Storage_FileSystem", "Win32_System_LibraryLoader"] }
+windows-sys = { version = "0.42.0", features = ["Win32_UI_Shell", "Win32_Foundation", "Win32_System_Com", "Win32_Storage_FileSystem", "Win32_System_LibraryLoader"], optional = true }
 
+# All other unixes except Android and Apple systems
 [target.'cfg(all(unix, not(any(target_vendor = "apple", target_os = "android"))))'.dependencies]
 zbus = { version = "3.7.0", optional = true }
 
-# Target exclusively freebsd as libc is only needed due to un-needed amazing complexity on freebsd.
-[target.'cfg(any(target_os = "freebsd", target_vendor = "apple"))'.dependencies]
-libc = {version = "0.2", optional = true }
 
 [features]
+dirs = ["once_cell", "libc", "objc", "objc-foundation", "windows-sys"]
+fs = []
+open = ["zbus", "windows-sys", "windows-sys/Win32_UI_WindowsAndMessaging"]
