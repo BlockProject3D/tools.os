@@ -35,6 +35,7 @@ zbus = { version = "3.7.0", optional = true }
 
 
 [features]
-dirs = ["once_cell", "libc", "objc", "objc-foundation", "windows-sys"]
+dirs = ["once_cell", "objc", "objc-foundation", "windows-sys"]
 fs = []
 open = ["zbus", "windows-sys", "windows-sys/Win32_UI_WindowsAndMessaging"]
+assets = ["libc", "objc", "objc-foundation"]

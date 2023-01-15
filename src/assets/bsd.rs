@@ -26,8 +26,42 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#[cfg(feature = "dirs")]
-pub mod dirs;
+pub fn get_exe_path() -> Option<PathBuf> {
+    use libc::size_t;
+    use libc::strlen;
+    use libc::sysctl;
+    use libc::CTL_KERN;
+    use libc::KERN_PROC;
+    use libc::KERN_PROC_PATHNAME;
+    use libc::PATH_MAX;
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
+    let mut mib = [CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1];
+    let mut buf: Vec<u8> = Vec::with_capacity(PATH_MAX);
+    let mut cb: size_t = PATH_MAX;
+    unsafe {
+        let res = sysctl(
+            mib.as_mut_ptr(),
+            4,
+            buf.as_mut_ptr() as *mut _,
+            &mut cb as _,
+            std::ptr::null_mut(),
+            0,
+        );
+        if res == 0 {
+            //FreeBSD without procfs.
+            let len = strlen(buf.as_ptr() as _);
+            //This is where we defer from process_path: we use std::os::unix::ffi::OsStrExt.
+            let str = OsStr::from_bytes(&buf[..len]);
+            let path = PathBuf::from(str);
+            Some(path)
+        } else {
+            //FreeBSD with procfs.
+            std::fs::read_link("/proc/curproc/file").ok()
+        }
+    }
+}
 
-#[cfg(feature = "assets")]
-pub mod assets;
+pub fn get_resources_dir() -> Option<PathBuf> {
+    None
+}

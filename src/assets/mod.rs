@@ -26,8 +26,33 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#[cfg(feature = "dirs")]
-pub mod dirs;
+use std::path::PathBuf;
 
-#[cfg(feature = "assets")]
-pub mod assets;
+#[cfg(target_vendor = "apple")]
+mod apple;
+
+#[cfg(target_os = "linux")]
+mod linux;
+
+#[cfg(any(target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))]
+mod bsd;
+
+#[cfg(target_os = "windows")]
+mod windows;
+
+#[cfg(target_vendor = "apple")]
+use apple::{get_exe_path, get_resources_dir};
+
+#[cfg(target_os = "linux")]
+use linux::{get_exe_path, get_resources_dir};
+
+#[cfg(any(target_os = "freebsd", target_os = "openbsd", target_os = "netbsd"))]
+use bsd::{get_exe_path, get_resources_dir};
+
+#[cfg(target_os = "windows")]
+use windows::{get_exe_path, get_resources_dir};
+
+pub fn get_app_bundled_asset(file_name: &str) -> Option<PathBuf> {
+    get_resources_dir().map(|v| v.join(file_name))
+        .or_else(|| get_exe_path().map(|v| v.join("Assets").join(file_name)))
+}
