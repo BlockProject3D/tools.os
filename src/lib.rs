@@ -31,3 +31,9 @@ pub mod dirs;
 
 #[cfg(feature = "assets")]
 pub mod assets;
+
+#[cfg(feature = "open")]
+pub mod open;
+
+#[cfg(feature = "fs")]
+pub mod fs;
