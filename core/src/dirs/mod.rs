@@ -213,17 +213,6 @@ impl<'a> Clone for App<'a> {
     }
 }
 
-/*
-/// Gets a path to an application asset.
-/// Returns None if the asset couldn't be found.
-///
-/// On apple platforms this will look into the app bundle, on other platforms this looks
-/// in a subdirectory named "Assets" next to the application executable.
-pub fn get_asset(file_name: &str) -> Option<PathBuf> {
-    get_app_bundled_asset(file_name)
-}
-*/
-
 #[cfg(test)]
 mod tests {
     use crate::dirs::App;

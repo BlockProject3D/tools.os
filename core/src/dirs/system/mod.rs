@@ -89,25 +89,3 @@ pub fn get_user_documents() -> Option<PathBuf> {
 pub fn get_user_downloads() -> Option<PathBuf> {
     _impl::get_user_downloads()
 }
-
-/*
-/// Returns the path to an asset of the application.
-///
-/// On supported platforms this returns an asset bundled in the application. Supported platforms are:
-/// - Any Linux/Unix when app is packaged as an AppImage,
-/// - macOS (when app is packaged as a .app),
-/// - iOS
-///
-/// In the case a platform/packaging method isn't supported this function still returns a path based
-/// on executable location.
-///
-/// For macOS and iOS, localization is still supported by the app however assets could also be localized
-/// in the app bundle as this function uses Apple APIs (CFBundleCopyResourceURL) to obtain the location
-/// of resources.
-///
-/// Returns None if there is a system issue, ex: the system didn't return a proper path to the current
-/// executing application. This should rarely occur.
-pub fn get_app_bundled_asset(file_name: &str) -> Option<PathBuf> {
-    _impl::get_app_bundled_asset(file_name)
-}
-*/

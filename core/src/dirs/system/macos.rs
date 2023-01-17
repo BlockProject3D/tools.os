@@ -73,13 +73,3 @@ pub fn get_user_documents() -> Option<PathBuf> {
 pub fn get_user_downloads() -> Option<PathBuf> {
     get_macos_dir_fail_if_sandbox(NS_DOWNLOADS_DIRECTORY)
 }
-
-/*pub fn get_app_bundled_asset(file_name: &str) -> Option<PathBuf> {
-    get_bundled_asset(file_name).or_else(|| {
-        get_exe_path().map(|v| {
-            v.parent()
-                .map(|v| v.join("Assets").join(file_name))
-                .unwrap_or_default()
-        })
-    })
-}*/

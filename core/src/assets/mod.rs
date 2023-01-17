@@ -52,6 +52,22 @@ use bsd::{get_exe_path, get_resources_dir};
 #[cfg(target_os = "windows")]
 use windows::{get_exe_path, get_resources_dir};
 
+/// Returns the path to an asset of the application.
+///
+/// On supported platforms this returns an asset bundled in the application. Supported platforms are:
+/// - Any Linux/Unix when app is packaged as an AppImage,
+/// - macOS (when app is packaged as a .app),
+/// - iOS
+///
+/// In the case a platform/packaging method isn't supported this function still returns a path based
+/// on executable location.
+///
+/// For macOS and iOS, localization is still supported by the app however assets could also be localized
+/// in the app bundle as this function uses Apple APIs (CFBundleCopyResourceURL) to obtain the location
+/// of resources.
+///
+/// Returns None if there is a system issue, ex: the system didn't return a proper path to the current
+/// executing application. This should rarely occur.
 pub fn get_app_bundled_asset(file_name: &str) -> Option<PathBuf> {
     get_resources_dir().map(|v| v.join(file_name))
         .or_else(|| get_exe_path().map(|v| v.join("Assets").join(file_name)))
