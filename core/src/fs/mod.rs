@@ -26,6 +26,9 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//! This module provides cross-platform functions to hide, unhide files, manage file extensions and
+//! get the most compatible absolute path of a file.
+
 #[cfg(unix)]
 mod unix;
 
