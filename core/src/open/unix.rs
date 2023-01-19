@@ -29,7 +29,7 @@
 use crate::open::Url;
 use std::ffi::OsStr;
 use zbus::{blocking::Connection, dbus_proxy, Result};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use crate::fs::PathExt;
 
