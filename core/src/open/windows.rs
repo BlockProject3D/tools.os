@@ -28,19 +28,31 @@
 
 use crate::open::Url;
 use std::os::windows::ffi::OsStrExt;
+use std::path::Path;
 use windows_sys::Win32::UI::Shell::ShellExecuteW;
 use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOW;
 use windows_sys::core::PCWSTR;
+use crate::fs::PathExt;
 
 pub fn open(url: &Url) -> bool {
     unsafe {
         let operation = ['o' as u16, 'p' as u16, 'e' as u16, 'n' as u16, 0x0000];
-        let mut urlw: Vec<u16> = Vec::new();//url.encode_wide().collect();
-        if !url.is_path() {
-            urlw.extend(url.scheme().as_os_str().encode_wide());
-            urlw.extend_from_slice(&[':' as u16, '/' as u16, '/' as u16]);
-        }
-        urlw.extend(url.path().encode_wide());
+        let mut urlw: Vec<u16> = match url.is_path() {
+            true => {
+                let path = match Path::new(url.path()).get_absolute() {
+                    Ok(v) => v,
+                    Err(_) => return false
+                };
+                path.as_os_str().encode_wide().collect()
+            }
+            false => {
+                let s = match url.to_os_str() {
+                    Ok(v) => v,
+                    Err(_) => return false
+                };
+                s.encode_wide().collect()
+            }
+        };
         urlw.push(0x0000);
         let operation: PCWSTR = operation.as_ptr();
         let res = ShellExecuteW(0, operation, urlw.as_ptr(), std::ptr::null_mut(), std::ptr::null_mut(), SW_SHOW as _);
