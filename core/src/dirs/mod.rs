@@ -26,6 +26,8 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//! This module provides cross-platform functions to get various system paths.
+
 use once_cell::sync::OnceCell;
 use std::path::{Path, PathBuf};
 
@@ -109,6 +111,9 @@ impl<'a> App<'a> {
     ///
     /// Use this directory to store cached files such as downloads, intermediate files, etc.
     ///
+    /// This function first tries to use [get_app_cache](system::get_app_cache)/{APP} and
+    /// falls back [get_data](App::get_data)/Cache.
+    ///
     /// # Errors
     ///
     /// Returns an [Io](self::Error::Io) if some directory couldn't be created.
@@ -131,13 +136,16 @@ impl<'a> App<'a> {
     ///
     /// Use this directory to store any content the user should see and alter.
     ///
+    /// This function first tries to use [get_app_documents](system::get_app_documents) and
+    /// falls back [get_data](App::get_data)/Documents.
+    ///
     /// # Errors
     ///
     /// Returns an [Io](self::Error::Io) if some directory couldn't be created.
     pub fn get_documents(&self) -> Result<&Path, Error> {
         // If this is OK then we must be running from a sandboxed system
         // where the app has it's own public documents folder, otherwise
-        // create a "public" Documents directory inside the application data directory.
+        // create a "public" Documents directory inside the application's data directory.
         self.docs
             .get_or_try_init(|| match system::get_app_documents() {
                 Some(docs) => Ok(docs),
@@ -155,6 +163,9 @@ impl<'a> App<'a> {
     /// Returns the path to this application's logs.
     ///
     /// Use this directory to store all logs. The user can view and alter this directory.
+    ///
+    /// This function first tries to use [get_app_logs](system::get_app_logs)/{APP} and
+    /// falls back [get_documents](App::get_documents)/Logs.
     ///
     /// # Errors
     ///
@@ -180,6 +191,9 @@ impl<'a> App<'a> {
     ///
     /// Use this directory to store all configs for the current user.
     /// This directory is not intended for direct user access.
+    ///
+    /// This function first tries to use [get_app_config](system::get_app_config)/{APP} and
+    /// falls back [get_data](App::get_data)/Config.
     ///
     /// # Errors
     ///
