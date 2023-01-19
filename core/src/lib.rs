@@ -26,6 +26,10 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//! Operating System tools and extensions designed for BlockProject3D.
+
+#![warn(missing_docs)]
+
 #[cfg(feature = "dirs")]
 pub mod dirs;
 
