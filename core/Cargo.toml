@@ -40,3 +40,8 @@ dirs = ["once_cell", "objc", "objc-foundation", "windows-sys"]
 open = ["fs", "zbus", "windows-sys", "windows-sys/Win32_UI_WindowsAndMessaging", "objc"]
 fs = ["dunce", "windows-sys"]
 assets = ["libc", "objc", "objc-foundation"]
+
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

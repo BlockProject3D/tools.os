@@ -28,6 +28,7 @@
 
 //! Operating System tools and extensions designed for BlockProject3D.
 
+#![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![warn(missing_docs)]
 
 #[cfg(feature = "dirs")]
