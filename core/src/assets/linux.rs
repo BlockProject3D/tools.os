@@ -26,23 +26,19 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::path::{Path, PathBuf};
+
 pub fn get_exe_path() -> Option<PathBuf> {
-    cfg_if::cfg_if! {
-        if #[cfg(target_os = "freebsd")] {
-            get_exe_path_freebsd().parent().map(|v| v.into())
-        } else {
-            //Try various paths to match as many unix systems as possible.
-            let mut path = Path::new("/proc/self/exe");
-            if !path.exists() {
-                path = Path::new("/proc/curproc/exe");
-            }
-            if !path.exists() {
-                path = Path::new("/proc/curproc/file");
-            }
-            let link = std::fs::read_link(path).ok()?;
-            link.parent().map(|v| v.into())
-        }
+    //Try various paths to match as many unix systems as possible.
+    let mut path = Path::new("/proc/self/exe");
+    if !path.exists() {
+        path = Path::new("/proc/curproc/exe");
     }
+    if !path.exists() {
+        path = Path::new("/proc/curproc/file");
+    }
+    let link = std::fs::read_link(path).ok()?;
+    link.parent().map(|v| v.into())
 }
 
 pub fn get_resources_dir() -> Option<PathBuf> {
