@@ -71,7 +71,7 @@ pub fn open(url: &Url) -> bool {
         Some(v) => v,
         None => return false
     };
-    if !url.is_path() || !path.is_dir() || path_str.is_none() {
+    if !url.is_path() || !path.is_dir() {
         return attempt_xdg_open(&uri);
     }
     let mut flag = match uri.to_str() {
