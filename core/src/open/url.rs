@@ -33,6 +33,7 @@ use std::fmt::{Debug, Display, Formatter};
 use std::path::Path;
 use crate::fs::PathExt;
 
+/// An error thrown when an URL couldn't be parsed.
 #[derive(Debug)]
 pub struct InvalidUrl<'a>(&'a str);
 
@@ -44,28 +45,60 @@ impl<'a> Display for InvalidUrl<'a> {
 
 impl<'a> Error for InvalidUrl<'a> {}
 
+/// Represents an URL to be passed to the open function.
 pub struct Url<'a> {
     scheme: &'a str,
     path: &'a OsStr
 }
 
 impl<'a> Url<'a> {
+    /// Creates a new URL.
+    ///
+    /// # Arguments
+    ///
+    /// * `scheme`: the URL scheme.
+    /// * `path`: the URL path.
+    ///
+    /// returns: Url
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsStr;
+    /// use bp3d_os::open::Url;
+    /// let url = Url::new("https", OsStr::new("rust-lang.org"));
+    /// assert_eq!(url.scheme(), "https");
+    /// assert_eq!(url.path(), OsStr::new("rust-lang.org"));
+    /// ```
     pub fn new(scheme: &'a str, path: &'a OsStr) -> Url<'a> {
         Url { scheme, path }
     }
 
+    /// Returns the scheme of this URL.
     pub fn scheme(&self) -> &'a str {
         self.scheme
     }
 
+    /// Returns the path of this URL.
     pub fn path(&self) -> &'a OsStr {
         self.path
     }
 
+    /// Returns true if this URL is a path to a file or a folder on the local system.
     pub fn is_path(&self) -> bool {
         self.scheme == "file"
     }
 
+    /// Converts this URL to an URL string wich can be parsed by most platforms.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsStr;
+    /// use bp3d_os::open::Url;
+    /// let url = Url::new("https", OsStr::new("rust-lang.org"));
+    /// assert_eq!(&url.to_os_str().unwrap(), OsStr::new("https://rust-lang.org"));
+    /// ```
     pub fn to_os_str(&self) -> std::io::Result<OsString> {
         let mut s = OsString::from(self.scheme);
         s.push("://");
