@@ -87,7 +87,7 @@ pub fn open(url: &Url) -> bool {
 pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> bool {
     let v: std::io::Result<Vec<PathBuf>> = iter.map(|v| v.get_absolute()).collect();
     let paths: Option<Vec<&str>> = match v {
-        Ok(v) => v.map(|v| v.as_os_str().to_str()).collect(),
+        Ok(v) => v.iter().map(|v| v.as_os_str().to_str()).collect(),
         Err(_) => return false
     };
     match paths {
