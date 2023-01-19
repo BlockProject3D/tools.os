@@ -26,16 +26,18 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use libc::size_t;
+use libc::strlen;
+use libc::sysctl;
+use libc::CTL_KERN;
+use libc::KERN_PROC;
+use libc::KERN_PROC_PATHNAME;
+use libc::PATH_MAX;
+use std::ffi::OsStr;
+use std::os::unix::ffi::OsStrExt;
+use std::path::PathBuf;
+
 pub fn get_exe_path() -> Option<PathBuf> {
-    use libc::size_t;
-    use libc::strlen;
-    use libc::sysctl;
-    use libc::CTL_KERN;
-    use libc::KERN_PROC;
-    use libc::KERN_PROC_PATHNAME;
-    use libc::PATH_MAX;
-    use std::ffi::OsStr;
-    use std::os::unix::ffi::OsStrExt;
     let mut mib = [CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1];
     let mut buf: Vec<u8> = Vec::with_capacity(PATH_MAX);
     let mut cb: size_t = PATH_MAX;
