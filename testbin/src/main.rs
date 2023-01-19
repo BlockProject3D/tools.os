@@ -28,8 +28,6 @@
 
 use std::io::{BufRead, BufReader};
 use std::path::Path;
-use std::thread::sleep;
-use std::time::Duration;
 use bp3d_os::assets;
 use bp3d_os::open;
 
@@ -46,7 +44,7 @@ fn ensure_yes(str: &str, func: &str) {
 
 fn main() {
     //There is no Assets folder so this should just return None
-    //assert!(assets::get_app_bundled_asset("file.txt").is_none());
+    assert!(assets::get_app_bundled_asset("file.txt").is_none());
 
     let url = open::Url::try_from("https://rust-lang.org").expect("Failed to parse valid address!");
     assert!(open::open(url));
