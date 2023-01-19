@@ -26,33 +26,15 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::io::{BufRead, BufReader};
+use crate::open::Url;
 use std::path::Path;
-use std::thread::sleep;
-use std::time::Duration;
-use bp3d_os::assets;
-use bp3d_os::open;
 
-fn ensure_yes(str: &str, func: &str) {
-    println!("{}", str);
-    let mut buffer = BufReader::new(std::io::stdin()).lines();
-    let line = buffer.next().unwrap().unwrap();
-    if line == "yes" {
-        println!("{} => ok", func);
-    } else {
-        panic!("{} => fail", func);
-    }
+pub fn open(_: &Url) -> bool {
+    //TODO: Check Apple docs if there's any way to do this on iOS.
+    false
 }
 
-fn main() {
-    //There is no Assets folder so this should just return None
-    //assert!(assets::get_app_bundled_asset("file.txt").is_none());
-
-    let url = open::Url::try_from("https://rust-lang.org").expect("Failed to parse valid address!");
-    assert!(open::open(url));
-    ensure_yes("Did your browser has opened the rust-lang.org website?", "open::open(Url)");
-    assert!(open::open(Path::new(".")));
-    ensure_yes("Did your file explorer open to the current working directory?", "open::open(Path)");
-    assert!(open::show_in_files([Path::new("/Users/yuri/Projects/tools.os/Cargo.toml"), Path::new("/Users/yuri/Projects/tools.os/Cargo.lock")].into_iter()));
-    ensure_yes("Did your file explorer open to the current working directory selecting both Cargo files?", "open::show_in_files(Path)");
+pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(_: I) -> bool {
+    //Unsupported on iOS
+    false
 }

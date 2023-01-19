@@ -28,8 +28,11 @@
 
 mod url;
 
-#[cfg(target_vendor = "apple")]
-mod apple;
+#[cfg(target_os = "macos")]
+mod macos;
+
+#[cfg(target_os = "ios")]
+mod ios;
 
 #[cfg(all(unix, not(any(target_vendor = "apple", target_os = "android"))))]
 mod unix;
@@ -37,8 +40,11 @@ mod unix;
 #[cfg(target_os = "windows")]
 mod windows;
 
-#[cfg(target_vendor = "apple")]
-use apple as _impl;
+#[cfg(target_os = "macos")]
+use macos as _impl;
+
+#[cfg(target_os = "ios")]
+use ios as _impl;
 
 #[cfg(all(unix, not(any(target_vendor = "apple", target_os = "android"))))]
 use unix as _impl;
@@ -48,6 +54,26 @@ use windows as _impl;
 
 pub use url::{Url, InvalidUrl};
 
+/// Open a file explorer selecting the different files given as iterator.
+///
+/// # Platform specific behavior
+///
+/// - On macOS, this function calls *activateFileViewerSelectingURLs* in *NSWorkspace*.
+///   Unfortunately, the ObjectiveC function relies on the presence of NSRunLoop, as such,
+///   *show_in_files* will also call *runUntilDate* in *NSRunLoop* which also means that
+///   **this function will return false if called from a different thread than the main thread**.
+///
+/// - On iOS, this function always returns false because there is no matching functionality in UIKit.
+///
+/// - On Windows, this function always returns false because WinAPI doesn't have a matching
+///   equivalent.
+///
+/// - On Linux and most other unix systems, this function attempts to call the dbus function
+///   *ShowItems* in *org.freedesktop.FileManager1*. If no dbus connection could be made this
+///   function returns false.
+///
+///   **Note: Not all file explorers are created equal under Linux, so the behavior of this
+///   function depends on the file explorer.**
 pub fn show_in_files<'a, I: Iterator<Item = &'a std::path::Path>>(iter: I) -> bool {
     _impl::show_in_files(iter)
 }
