@@ -60,7 +60,7 @@ fn attempt_dbus_call(urls: &[&str], show_items: bool) -> bool {
 
 fn attempt_xdg_open(url: &OsStr) -> bool {
     let res = Command::new("xdg-open")
-        .args([&*url])
+        .args([url])
         .output();
     res.is_ok()
 }
