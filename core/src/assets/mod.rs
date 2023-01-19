@@ -26,6 +26,8 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//! This module provides cross-platform functions to get application resources.
+
 use std::path::PathBuf;
 
 #[cfg(target_vendor = "apple")]
@@ -54,6 +56,8 @@ use windows::{get_exe_path, get_resources_dir};
 
 /// Returns the path to an asset of the application.
 ///
+/// # Platform specific behavior
+///
 /// On supported platforms this returns an asset bundled in the application. Supported platforms are:
 /// - Any Linux/Unix when app is packaged as an AppImage,
 /// - macOS (when app is packaged as a .app),
@@ -61,10 +65,6 @@ use windows::{get_exe_path, get_resources_dir};
 ///
 /// In the case a platform/packaging method isn't supported this function still returns a path based
 /// on executable location.
-///
-/// For macOS and iOS, localization is still supported by the app however assets could also be localized
-/// in the app bundle as this function uses Apple APIs (CFBundleCopyResourceURL) to obtain the location
-/// of resources.
 ///
 /// Returns None if there is a system issue, ex: the system didn't return a proper path to the current
 /// executing application. This should rarely occur.
