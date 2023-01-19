@@ -26,6 +26,9 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//! This module provides cross-platform functions to open files, urls and select files in the file
+//! explorer.
+
 mod url;
 
 #[cfg(target_os = "macos")]
@@ -56,6 +59,8 @@ pub use url::{Url, InvalidUrl};
 
 /// Open a file explorer selecting the different files given as iterator.
 ///
+/// Returns true if the operation has succeeded.
+///
 /// # Platform specific behavior
 ///
 /// - On macOS, this function calls *activateFileViewerSelectingURLs* in *NSWorkspace*.
@@ -78,6 +83,27 @@ pub fn show_in_files<'a, I: Iterator<Item = &'a std::path::Path>>(iter: I) -> bo
     _impl::show_in_files(iter)
 }
 
+/// Opens an URL using the default associated app for the URL scheme.
+///
+/// Returns true if the operation has succeeded.
+///
+/// # Platform specific behavior
+///
+/// - On macOS, this function calls *openURL* in *NSWorkspace*.
+///
+/// - On iOS, this function currently returns false.
+///
+/// - On Windows, this function calls *ShellExecuteW* with the "open" operation.
+///
+/// - On Linux and most other unix systems, this function calls the dbus function *ShowFolders* in
+///   *org.freedesktop.FileManager1* when the URL is a path to a directory, otherwise the function
+///   attempts to execute the *xdg-open* command line tool with the URL string as argument.
+///
+/// # Arguments
+///
+/// * `url`: the URL to open.
+///
+/// returns: bool
 pub fn open<'a, T: Into<Url<'a>>>(url: T) -> bool {
     _impl::open(&url.into())
 }
