@@ -30,11 +30,9 @@ use std::ffi::OsString;
 use std::os::windows::ffi::OsStringExt;
 use std::path::PathBuf;
 use windows_sys::core::GUID;
-use windows_sys::Win32::Foundation::{
-    GetLastError, ERROR_INSUFFICIENT_BUFFER, MAX_PATH, PWSTR, S_OK,
-};
+use windows_sys::core::PWSTR;
+use windows_sys::Win32::Foundation::S_OK;
 use windows_sys::Win32::System::Com::CoTaskMemFree;
-use windows_sys::Win32::System::LibraryLoader::GetModuleFileNameW;
 use windows_sys::Win32::UI::Shell::{
     FOLDERID_Documents, FOLDERID_Downloads, FOLDERID_LocalAppData, FOLDERID_Profile,
     FOLDERID_RoamingAppData, SHGetKnownFolderPath,
@@ -43,7 +41,7 @@ use windows_sys::Win32::UI::Shell::{
 fn get_windows_path(folder: GUID) -> Option<PathBuf> {
     unsafe {
         let mut str: PWSTR = std::ptr::null_mut();
-        let res = SHGetKnownFolderPath(&folder, 0, std::ptr::null_mut(), &mut str as _);
+        let res = SHGetKnownFolderPath(&folder, 0, 0, &mut str as _);
         if res != S_OK {
             return None;
         }

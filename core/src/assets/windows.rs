@@ -26,6 +26,13 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::ffi::OsString;
+use windows_sys::Win32::Foundation::{
+    GetLastError, ERROR_INSUFFICIENT_BUFFER, MAX_PATH,
+};
+use windows_sys::Win32::System::LibraryLoader::GetModuleFileNameW;
+use std::path::PathBuf;
+
 pub fn get_exe_path() -> Option<PathBuf> {
     unsafe {
         //Try fast path with MAX_PATH which should work for most windows versions.

@@ -28,7 +28,7 @@
 
 use std::io::{Error, ErrorKind, Result};
 use std::os::windows::ffi::OsStrExt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use windows_sys::Win32::Storage::FileSystem::SetFileAttributesW;
 use windows_sys::Win32::Storage::FileSystem::GetFileAttributesW;
 use windows_sys::Win32::Storage::FileSystem::FILE_ATTRIBUTE_HIDDEN;
@@ -57,7 +57,7 @@ pub fn hide<T: AsRef<Path>>(path: T) -> Result<()> {
         if attrs == INVALID_FILE_ATTRIBUTES {
             return Err(Error::last_os_error());
         }
-        if SetFileAttributesW(file, attrs | FILE_ATTRIBUTE_HIDDEN) == 0 {
+        if SetFileAttributesW(file.as_ptr(), attrs | FILE_ATTRIBUTE_HIDDEN) == 0 {
             Err(Error::last_os_error())
         } else {
             Ok(())
@@ -88,7 +88,7 @@ pub fn unhide<T: AsRef<Path>>(path: T) -> Result<()> {
         if attrs == INVALID_FILE_ATTRIBUTES {
             return Err(Error::last_os_error());
         }
-        if SetFileAttributesW(file, attrs & !FILE_ATTRIBUTE_HIDDEN) == 0 {
+        if SetFileAttributesW(file.as_ptr(), attrs & !FILE_ATTRIBUTE_HIDDEN) == 0 {
             Err(Error::last_os_error())
         } else {
             Ok(())
