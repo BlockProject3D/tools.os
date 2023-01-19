@@ -33,7 +33,7 @@ use objc::class;
 use objc::msg_send;
 use objc::sel;
 use objc::sel_impl;
-use objc::runtime::{BOOL, Object};
+use objc::runtime::{BOOL, NO, Object};
 use std::path::Path;
 use crate::fs::PathExt;
 use crate::open::Url;
@@ -74,7 +74,7 @@ pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> bool {
     let nsurl = class!(NSURL);
     unsafe {
         let flag: BOOL = msg_send![nsthread, isMainThread];
-        if !flag {
+        if flag == NO {
             return false;
         }
     }
