@@ -36,10 +36,10 @@ mod unix;
 mod windows;
 
 #[cfg(unix)]
-pub use unix::{get_absolute_path, hide, unhide};
+pub use unix::{get_absolute_path, hide, unhide, is_hidden};
 
 #[cfg(windows)]
-pub use windows::{get_absolute_path, hide, unhide};
+pub use windows::{get_absolute_path, hide, unhide, is_hidden};
 
 /// Extension trait for [Path](std::path::Path) for common functionality in BP3D software.
 pub trait PathExt {

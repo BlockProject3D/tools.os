@@ -105,3 +105,20 @@ pub fn unhide<T: AsRef<Path>>(path: T) -> Result<()> {
 pub fn get_absolute_path<T: AsRef<Path>>(path: T) -> Result<PathBuf> {
     std::fs::canonicalize(path)
 }
+
+/// Checks if a given path is hidden.
+///
+/// # Arguments
+///
+/// * `path`: the path to check.
+///
+/// returns: bool
+pub fn is_hidden<T: AsRef<Path>>(path: T) -> bool {
+    if let Some(str) = path.as_ref().file_name() {
+        let bytes = str.as_bytes();
+        if bytes[0] == b'.' {
+            return true;
+        }
+    }
+    false
+}

@@ -113,3 +113,29 @@ pub fn unhide<T: AsRef<Path>>(path: T) -> Result<()> {
 pub fn get_absolute_path<T: AsRef<Path>>(path: T) -> Result<PathBuf> {
     dunce::canonicalize(path)
 }
+
+/// Checks if a given path is hidden.
+///
+/// # Arguments
+///
+/// * `path`: the path to check.
+///
+/// returns: bool
+pub fn is_hidden<T: AsRef<Path>>(path: T) -> bool {
+    let path = path.as_ref();
+    if !path.exists() {
+        return false;
+    }
+    let mut file: Vec<u16> = path.as_os_str().encode_wide().collect();
+    file.push(0x0000);
+    unsafe {
+        let attrs = GetFileAttributesW(file.as_ptr());
+        if attrs == INVALID_FILE_ATTRIBUTES {
+            return false;
+        }
+        if attrs & FILE_ATTRIBUTE_HIDDEN == 0 {
+            return true;
+        }
+    }
+    false
+}
