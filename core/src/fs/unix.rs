@@ -26,8 +26,8 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::io::{Error, ErrorKind, Result};
 use std::ffi::OsStr;
+use std::io::{Error, ErrorKind, Result};
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 
@@ -58,7 +58,10 @@ pub fn hide<T: AsRef<Path>>(path: T) -> Result<()> {
         copy.set_file_name(OsStr::from_bytes(&vec));
         return std::fs::rename(path, copy);
     }
-    Err(Error::new(ErrorKind::InvalidInput, "the path does not have a file name"))
+    Err(Error::new(
+        ErrorKind::InvalidInput,
+        "the path does not have a file name",
+    ))
 }
 
 /// Un-hides the given path in the current platform's file explorer.
@@ -88,7 +91,10 @@ pub fn unhide<T: AsRef<Path>>(path: T) -> Result<()> {
         copy.set_file_name(OsStr::from_bytes(&vec));
         return std::fs::rename(path, copy);
     }
-    Err(Error::new(ErrorKind::InvalidInput, "the path does not have a file name"))
+    Err(Error::new(
+        ErrorKind::InvalidInput,
+        "the path does not have a file name",
+    ))
 }
 
 /// Converts a path to an absolute path.

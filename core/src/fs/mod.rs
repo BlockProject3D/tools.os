@@ -36,16 +36,19 @@ mod unix;
 mod windows;
 
 #[cfg(unix)]
-pub use unix::{get_absolute_path, hide, unhide, is_hidden};
+pub use unix::{get_absolute_path, hide, is_hidden, unhide};
 
 #[cfg(windows)]
-pub use windows::{get_absolute_path, hide, unhide, is_hidden};
+pub use windows::{get_absolute_path, hide, is_hidden, unhide};
 
 /// Extension trait for [Path](std::path::Path) for common functionality in BP3D software.
 pub trait PathExt {
     /// Ensures the given extension is present on a [Path](std::path::Path). Reallocates a new
     /// [PathBuf](std::path::PathBuf) if no extension is present or that the extension is incorrect.
-    fn ensure_extension<S: AsRef<std::ffi::OsStr>>(&self, extension: S) -> std::borrow::Cow<std::path::Path>;
+    fn ensure_extension<S: AsRef<std::ffi::OsStr>>(
+        &self,
+        extension: S,
+    ) -> std::borrow::Cow<std::path::Path>;
 
     /// Converts this path to an absolute path.
     ///
@@ -61,7 +64,10 @@ pub trait PathExt {
 }
 
 impl PathExt for std::path::Path {
-    fn ensure_extension<S: AsRef<std::ffi::OsStr>>(&self, extension: S) -> std::borrow::Cow<std::path::Path> {
+    fn ensure_extension<S: AsRef<std::ffi::OsStr>>(
+        &self,
+        extension: S,
+    ) -> std::borrow::Cow<std::path::Path> {
         if let Some(ext) = self.extension() {
             if ext == extension.as_ref() {
                 self.into()

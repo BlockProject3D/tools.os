@@ -28,11 +28,9 @@
 
 use std::ffi::OsString;
 use std::os::windows::ffi::OsStringExt;
-use windows_sys::Win32::Foundation::{
-    GetLastError, ERROR_INSUFFICIENT_BUFFER, MAX_PATH,
-};
-use windows_sys::Win32::System::LibraryLoader::GetModuleFileNameW;
 use std::path::PathBuf;
+use windows_sys::Win32::Foundation::{GetLastError, ERROR_INSUFFICIENT_BUFFER, MAX_PATH};
+use windows_sys::Win32::System::LibraryLoader::GetModuleFileNameW;
 
 pub fn get_exe_path() -> Option<PathBuf> {
     unsafe {

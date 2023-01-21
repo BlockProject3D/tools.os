@@ -55,7 +55,7 @@ use unix as _impl;
 #[cfg(target_os = "windows")]
 use windows as _impl;
 
-pub use url::{Url, InvalidUrl};
+pub use url::{InvalidUrl, Url};
 
 /// Open a file explorer selecting the different files given as iterator.
 ///

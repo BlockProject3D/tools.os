@@ -27,12 +27,12 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use libc::{strlen, PATH_MAX};
+use objc::runtime::Object;
+use objc::{class, msg_send, sel, sel_impl};
+use objc_foundation::{INSString, NSString};
 use std::ffi::{c_char, c_int, OsStr};
 use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
-use objc::{class, msg_send, sel, sel_impl};
-use objc::runtime::Object;
-use objc_foundation::{INSString, NSString};
 
 extern "C" {
     pub fn _NSGetExecutablePath(buf: *mut c_char, bufsize: *mut u32) -> c_int;
