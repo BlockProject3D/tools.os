@@ -27,6 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::ffi::OsString;
+use std::os::windows::ffi::OsStringExt;
 use windows_sys::Win32::Foundation::{
     GetLastError, ERROR_INSUFFICIENT_BUFFER, MAX_PATH,
 };
