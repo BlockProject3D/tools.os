@@ -29,8 +29,8 @@
 use std::io::{Error, ErrorKind, Result};
 use std::os::windows::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
-use windows_sys::Win32::Storage::FileSystem::SetFileAttributesW;
 use windows_sys::Win32::Storage::FileSystem::GetFileAttributesW;
+use windows_sys::Win32::Storage::FileSystem::SetFileAttributesW;
 use windows_sys::Win32::Storage::FileSystem::FILE_ATTRIBUTE_HIDDEN;
 use windows_sys::Win32::Storage::FileSystem::INVALID_FILE_ATTRIBUTES;
 

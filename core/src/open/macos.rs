@@ -26,17 +26,17 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::ffi::c_double;
-use std::os::unix::ffi::OsStrExt;
-use std::os::raw::c_ulong;
-use objc::class;
-use objc::msg_send;
-use objc::sel;
-use objc::sel_impl;
-use objc::runtime::{BOOL, NO, Object};
-use std::path::Path;
 use crate::fs::PathExt;
 use crate::open::Url;
+use objc::class;
+use objc::msg_send;
+use objc::runtime::{Object, BOOL, NO};
+use objc::sel;
+use objc::sel_impl;
+use std::ffi::c_double;
+use std::os::raw::c_ulong;
+use std::os::unix::ffi::OsStrExt;
+use std::path::Path;
 
 const NS_UTF8_STRING_ENCODING: c_ulong = 4;
 
@@ -47,7 +47,7 @@ extern "C" {}
 pub fn open(url: &Url) -> bool {
     let url_str = match url.to_os_str() {
         Ok(v) => v,
-        Err(_) => return false
+        Err(_) => return false,
     };
     unsafe {
         let nsstring = class!(NSString);
@@ -89,10 +89,11 @@ pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> bool {
     })).collect();
     let urls = match v {
         Ok(v) => v,
-        Err(_) => return false
+        Err(_) => return false,
     };
     unsafe {
-        let arr: *mut Object = msg_send![nsarray, arrayWithObjects: urls.as_ptr() count: urls.len() as c_ulong];
+        let arr: *mut Object =
+            msg_send![nsarray, arrayWithObjects: urls.as_ptr() count: urls.len() as c_ulong];
         let workspace: *mut Object = msg_send![nsworkspace, sharedWorkspace];
         let _: () = msg_send![workspace, activateFileViewerSelectingURLs: arr];
         // release urls
@@ -100,7 +101,7 @@ pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> bool {
             let _: () = msg_send![url, release];
         }
         let _: () = msg_send![arr, release]; // release array
-        //Create a date of 1 sec in the future
+                                             //Create a date of 1 sec in the future
         let runloop: *mut Object = msg_send![nsrunloop, mainRunLoop];
         let date: *mut Object = msg_send![nsdate, dateWithTimeIntervalSinceNow: 1.0 as c_double];
         let _: () = msg_send![runloop, runUntilDate: date];

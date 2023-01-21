@@ -26,14 +26,18 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::fs::PathExt;
 use crate::open::Url;
 use std::ffi::OsStr;
-use zbus::{blocking::Connection, dbus_proxy, Result};
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use crate::fs::PathExt;
+use zbus::{blocking::Connection, dbus_proxy, Result};
 
-#[dbus_proxy(default_service = "org.freedesktop.FileManager1", interface = "org.freedesktop.FileManager1", default_path = "/org/freedesktop/FileManager1")]
+#[dbus_proxy(
+    default_service = "org.freedesktop.FileManager1",
+    interface = "org.freedesktop.FileManager1",
+    default_path = "/org/freedesktop/FileManager1"
+)]
 trait FileManager {
     //This is what we want when the url is a path (file://) and a folder
     fn show_folders(&self, uris: &[&str], startup_id: &str) -> Result<()>;
@@ -53,15 +57,13 @@ fn attempt_dbus_call(urls: &[&str], show_items: bool) -> bool {
     };
     let res = match show_items {
         true => proxy.show_items(urls, "test"),
-        false => proxy.show_folders(urls, "test")
+        false => proxy.show_folders(urls, "test"),
     };
     res.is_ok()
 }
 
 fn attempt_xdg_open(url: &OsStr) -> bool {
-    let res = Command::new("xdg-open")
-        .args([url])
-        .output();
+    let res = Command::new("xdg-open").args([url]).output();
     res.is_ok()
 }
 
@@ -69,14 +71,14 @@ pub fn open(url: &Url) -> bool {
     let path = Path::new(url.path());
     let uri = match url.to_os_str().ok() {
         Some(v) => v,
-        None => return false
+        None => return false,
     };
     if !url.is_path() || !path.is_dir() {
         return attempt_xdg_open(&uri);
     }
     let mut flag = match uri.to_str() {
         Some(v) => attempt_dbus_call(&[v], false),
-        None => false
+        None => false,
     };
     if !flag {
         flag = attempt_xdg_open(&uri);
@@ -88,10 +90,10 @@ pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> bool {
     let v: std::io::Result<Vec<PathBuf>> = iter.map(|v| v.get_absolute()).collect();
     let paths: Option<Vec<&str>> = match v.as_ref() {
         Ok(v) => v.iter().map(|v| v.as_os_str().to_str()).collect(),
-        Err(_) => return false
+        Err(_) => return false,
     };
     match paths {
         Some(v) => attempt_dbus_call(&v, true),
-        None => false
+        None => false,
     }
 }

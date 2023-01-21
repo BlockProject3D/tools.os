@@ -26,10 +26,10 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::io::{BufRead, BufReader};
-use std::path::Path;
 use bp3d_os::assets;
 use bp3d_os::open;
+use std::io::{BufRead, BufReader};
+use std::path::Path;
 
 fn ensure_yes(str: &str, func: &str) {
     println!("{}", str);
@@ -48,9 +48,24 @@ fn main() {
 
     let url = open::Url::try_from("https://rust-lang.org").expect("Failed to parse valid address!");
     assert!(open::open(url));
-    ensure_yes("Did your browser has opened the rust-lang.org website?", "open::open(Url)");
+    ensure_yes(
+        "Did your browser has opened the rust-lang.org website?",
+        "open::open(Url)",
+    );
     assert!(open::open(Path::new(".")));
-    ensure_yes("Did your file explorer open to the current working directory?", "open::open(Path)");
-    assert!(open::show_in_files([Path::new("/Users/yuri/Projects/tools.os/Cargo.toml"), Path::new("/Users/yuri/Projects/tools.os/Cargo.lock")].into_iter()));
-    ensure_yes("Did your file explorer open to the current working directory selecting both Cargo files?", "open::show_in_files(Path)");
+    ensure_yes(
+        "Did your file explorer open to the current working directory?",
+        "open::open(Path)",
+    );
+    assert!(open::show_in_files(
+        [
+            Path::new("/Users/yuri/Projects/tools.os/Cargo.toml"),
+            Path::new("/Users/yuri/Projects/tools.os/Cargo.lock")
+        ]
+        .into_iter()
+    ));
+    ensure_yes(
+        "Did your file explorer open to the current working directory selecting both Cargo files?",
+        "open::show_in_files(Path)",
+    );
 }

@@ -36,25 +36,25 @@ use std::path::PathBuf;
 mod apple_shared;
 #[cfg(target_os = "ios")]
 mod ios;
+#[cfg(target_os = "macos")]
+mod macos;
 #[cfg(all(
     unix,
     not(any(target_os = "macos", target_os = "ios", target_os = "android"))
 ))]
 mod unix;
-#[cfg(target_os = "macos")]
-mod macos;
 #[cfg(windows)]
 mod windows;
 
 #[cfg(target_os = "ios")]
 use ios as _impl;
+#[cfg(target_os = "macos")]
+use macos as _impl;
 #[cfg(all(
     unix,
     not(any(target_os = "macos", target_os = "ios", target_os = "android"))
 ))]
 use unix as _impl;
-#[cfg(target_os = "macos")]
-use macos as _impl;
 #[cfg(windows)]
 use windows as _impl;
 

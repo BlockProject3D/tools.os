@@ -26,12 +26,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::fs::PathExt;
 use std::convert::TryFrom;
 use std::error::Error;
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Debug, Display, Formatter};
 use std::path::Path;
-use crate::fs::PathExt;
 
 /// An error thrown when an URL couldn't be parsed.
 #[derive(Debug)]
@@ -48,7 +48,7 @@ impl<'a> Error for InvalidUrl<'a> {}
 /// Represents an URL to be passed to the open function.
 pub struct Url<'a> {
     scheme: &'a str,
-    path: &'a OsStr
+    path: &'a OsStr,
 }
 
 impl<'a> Url<'a> {
@@ -137,9 +137,12 @@ impl<'a> TryFrom<&'a str> for Url<'a> {
             Some(id) => {
                 let scheme = &value[..id];
                 let path = &value[id + 3..];
-                Ok(Url { scheme, path: path.as_ref() })
-            },
-            None => Err(InvalidUrl(value))
+                Ok(Url {
+                    scheme,
+                    path: path.as_ref(),
+                })
+            }
+            None => Err(InvalidUrl(value)),
         }
     }
 }
