@@ -50,7 +50,7 @@ pub fn hide<T: AsRef<Path>>(r: T) -> Result<PathUpdate<T>> {
         if SetFileAttributesW(file.as_ptr(), attrs | FILE_ATTRIBUTE_HIDDEN) == 0 {
             Err(Error::last_os_error())
         } else {
-            Ok(PathUpdate::Unchanged(path))
+            Ok(PathUpdate::Unchanged(r))
         }
     }
 }
@@ -70,7 +70,7 @@ pub fn show<T: AsRef<Path>>(r: T) -> Result<PathUpdate<T>> {
         if SetFileAttributesW(file.as_ptr(), attrs & !FILE_ATTRIBUTE_HIDDEN) == 0 {
             Err(Error::last_os_error())
         } else {
-            Ok(PathUpdate::Unchanged(path))
+            Ok(PathUpdate::Unchanged(r))
         }
     }
 }
