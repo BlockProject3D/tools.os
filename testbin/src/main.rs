@@ -51,23 +51,19 @@ fn main() {
     assert!(open::open(url));
     ensure_yes(
         "Did your browser has opened the rust-lang.org website?",
-        "open::open(Url)"
+        "open::open(Url)",
     );
     assert!(open::open(Path::new(".")));
     ensure_yes(
         "Did your file explorer open to the current working directory?",
-        "open::open(Path)"
+        "open::open(Path)",
     );
     assert!(open::show_in_files(
-        [
-            Path::new("./Cargo.toml"),
-            Path::new("./Cargo.lock")
-        ]
-        .into_iter()
+        [Path::new("./Cargo.toml"), Path::new("./Cargo.lock")].into_iter()
     ));
     ensure_yes(
         "Did your file explorer open to the current working directory selecting both Cargo files?",
-        "open::show_in_files(Path)"
+        "open::show_in_files(Path)",
     );
     let test_path = Path::new("./Cargo.lock");
     assert!(!test_path.is_hidden());
@@ -76,12 +72,12 @@ fn main() {
     assert!(open::open(test_path.parent().unwrap()));
     ensure_yes(
         "Is Cargo.lock now invisible from the file explorer?",
-        "fs::hide"
+        "fs::hide",
     );
     let test_path = fs::show(test_path).expect("Failed to show test file (Cargo.lock)");
     assert!(open::open(test_path.parent().unwrap()));
     ensure_yes(
         "Is Cargo.lock now visible from the file explorer?",
-        "fs::show"
+        "fs::show",
     );
 }

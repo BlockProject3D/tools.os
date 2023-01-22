@@ -26,6 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::fs::PathUpdate;
 use std::io::{Error, ErrorKind, Result};
 use std::os::windows::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
@@ -33,7 +34,6 @@ use windows_sys::Win32::Storage::FileSystem::GetFileAttributesW;
 use windows_sys::Win32::Storage::FileSystem::SetFileAttributesW;
 use windows_sys::Win32::Storage::FileSystem::FILE_ATTRIBUTE_HIDDEN;
 use windows_sys::Win32::Storage::FileSystem::INVALID_FILE_ATTRIBUTES;
-use crate::fs::PathUpdate;
 
 pub fn hide<T: AsRef<Path>>(r: T) -> Result<PathUpdate<T>> {
     let path = r.as_ref();

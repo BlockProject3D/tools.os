@@ -47,14 +47,14 @@ pub enum PathUpdate<T: AsRef<std::path::Path>> {
     Changed(std::path::PathBuf),
 
     /// Indicates that the source path was returned as-is with no changes.
-    Unchanged(T)
+    Unchanged(T),
 }
 
 impl<T: AsRef<std::path::Path>> AsRef<std::path::Path> for PathUpdate<T> {
     fn as_ref(&self) -> &std::path::Path {
         match self {
             PathUpdate::Changed(v) => v.as_ref(),
-            PathUpdate::Unchanged(v) => v.as_ref()
+            PathUpdate::Unchanged(v) => v.as_ref(),
         }
     }
 }
@@ -87,7 +87,9 @@ impl<T: AsRef<std::path::Path>> std::ops::Deref for PathUpdate<T> {
 /// # Errors
 ///
 /// Returns an [Error](Error) if the path couldn't be converted to an absolute path.
-pub fn get_absolute_path<T: AsRef<std::path::Path>>(path: T) -> std::io::Result<std::path::PathBuf> {
+pub fn get_absolute_path<T: AsRef<std::path::Path>>(
+    path: T,
+) -> std::io::Result<std::path::PathBuf> {
     _impl::get_absolute_path(path)
 }
 
