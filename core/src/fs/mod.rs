@@ -41,6 +41,32 @@ use unix as _impl;
 #[cfg(windows)]
 use windows as _impl;
 
+/// The result of hide and show.
+pub enum PathUpdate<T: AsRef<std::path::Path>> {
+    /// Indicates that the source path was changed.
+    Changed(std::path::PathBuf),
+
+    /// Indicates that the source path was returned as-is with no changes.
+    Unchanged(T)
+}
+
+impl<T: AsRef<std::path::Path>> AsRef<std::path::Path> for PathUpdate<T> {
+    fn as_ref(&self) -> &std::path::Path {
+        match self {
+            PathUpdate::Changed(v) => v.as_ref(),
+            PathUpdate::Unchanged(v) => v.as_ref()
+        }
+    }
+}
+
+impl<T: AsRef<std::path::Path>> std::ops::Deref for PathUpdate<T> {
+    type Target = std::path::Path;
+
+    fn deref(&self) -> &std::path::Path {
+        self.as_ref()
+    }
+}
+
 /// Converts a path to an absolute path.
 ///
 /// # Platform specific behavior
@@ -87,10 +113,13 @@ pub fn is_hidden<T: AsRef<std::path::Path>>(path: T) -> bool {
 ///
 /// # Platform specific behavior
 ///
-/// - On Unix, this function prefixes the path with a '.' if it does not already have one.
+/// - On Unix, this function prefixes the path with a '.' and returns [Changed](PathUpdate::Changed)
+///   if it does not already have one. If the path already has the prefix, the function returns
+///   [Unchanged](PathUpdate::Unchanged).
 ///
 /// - On Windows, this function calls *GetFileAttributesW* and *SetFileAttributesW* with the
-///   *FILE_ATTRIBUTE_HIDDEN*.
+///   *FILE_ATTRIBUTE_HIDDEN* attribute. Because windows uses file attributes to define if a
+///   file should be visible, the function always returns [Unchanged](PathUpdate::Unchanged).
 ///
 /// # Arguments
 ///
@@ -101,7 +130,7 @@ pub fn is_hidden<T: AsRef<std::path::Path>>(path: T) -> bool {
 /// # Errors
 ///
 /// Returns an [Error](Error) if the path couldn't be hidden.
-pub fn hide<T: AsRef<std::path::Path>>(path: T) -> std::io::Result<()> {
+pub fn hide<T: AsRef<std::path::Path>>(path: T) -> std::io::Result<PathUpdate<T>> {
     _impl::hide(path)
 }
 
@@ -109,10 +138,13 @@ pub fn hide<T: AsRef<std::path::Path>>(path: T) -> std::io::Result<()> {
 ///
 /// # Platform specific behavior
 ///
-/// - On Unix, this function removes the '.' prefix from the given path if it does have it.
+/// - On Unix, this function removes the '.' prefix from the given path and returns
+///   [Changed](PathUpdate::Changed) if it does have it. If the path does not already has the
+///   prefix, the function returns [Unchanged](PathUpdate::Unchanged).
 ///
 /// - On Windows, this function calls *GetFileAttributesW* and *SetFileAttributesW* and removes the
-///   attribute *FILE_ATTRIBUTE_HIDDEN*.
+///   *FILE_ATTRIBUTE_HIDDEN* attribute. Because windows uses file attributes to define if a file
+///   should be visible, the function always returns [Unchanged](PathUpdate::Unchanged).
 ///
 /// # Arguments
 ///
@@ -123,7 +155,7 @@ pub fn hide<T: AsRef<std::path::Path>>(path: T) -> std::io::Result<()> {
 /// # Errors
 ///
 /// Returns an [Error](Error) if the path couldn't be un-hidden.
-pub fn show<T: AsRef<std::path::Path>>(path: T) -> std::io::Result<()> {
+pub fn show<T: AsRef<std::path::Path>>(path: T) -> std::io::Result<PathUpdate<T>> {
     _impl::show(path)
 }
 
@@ -131,9 +163,10 @@ mod sealing {
     pub trait Sealed {}
     impl Sealed for std::path::Path {}
 }
+use sealing::Sealed;
 
 /// Extension trait for [Path](std::path::Path) for common functionality in BP3D software.
-pub trait PathExt: sealing::Sealed {
+pub trait PathExt: Sealed {
     /// Ensures the given extension is present on a [Path](std::path::Path). Reallocates a new
     /// [PathBuf](std::path::PathBuf) if no extension is present or that the extension is incorrect.
     fn ensure_extension<S: AsRef<std::ffi::OsStr>>(

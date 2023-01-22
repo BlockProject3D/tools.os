@@ -28,6 +28,7 @@
 
 use bp3d_os::assets;
 use bp3d_os::open;
+use bp3d_os::{fs, fs::PathExt};
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
@@ -50,22 +51,37 @@ fn main() {
     assert!(open::open(url));
     ensure_yes(
         "Did your browser has opened the rust-lang.org website?",
-        "open::open(Url)",
+        "open::open(Url)"
     );
     assert!(open::open(Path::new(".")));
     ensure_yes(
         "Did your file explorer open to the current working directory?",
-        "open::open(Path)",
+        "open::open(Path)"
     );
     assert!(open::show_in_files(
         [
-            Path::new("/Users/yuri/Projects/tools.os/Cargo.toml"),
-            Path::new("/Users/yuri/Projects/tools.os/Cargo.lock")
+            Path::new("./Cargo.toml"),
+            Path::new("./Cargo.lock")
         ]
         .into_iter()
     ));
     ensure_yes(
         "Did your file explorer open to the current working directory selecting both Cargo files?",
-        "open::show_in_files(Path)",
+        "open::show_in_files(Path)"
+    );
+    let test_path = Path::new("./Cargo.lock");
+    assert!(!test_path.is_hidden());
+    let test_path = fs::hide(test_path).expect("Failed to hide test file (Cargo.lock)");
+    assert!(test_path.is_hidden());
+    assert!(open::open(test_path.parent().unwrap()));
+    ensure_yes(
+        "Is Cargo.lock now invisible from the file explorer?",
+        "fs::hide"
+    );
+    let test_path = fs::show(test_path).expect("Failed to show test file (Cargo.lock)");
+    assert!(open::open(test_path.parent().unwrap()));
+    ensure_yes(
+        "Is Cargo.lock now visible from the file explorer?",
+        "fs::show"
     );
 }

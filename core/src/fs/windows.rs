@@ -33,9 +33,10 @@ use windows_sys::Win32::Storage::FileSystem::GetFileAttributesW;
 use windows_sys::Win32::Storage::FileSystem::SetFileAttributesW;
 use windows_sys::Win32::Storage::FileSystem::FILE_ATTRIBUTE_HIDDEN;
 use windows_sys::Win32::Storage::FileSystem::INVALID_FILE_ATTRIBUTES;
+use crate::fs::PathUpdate;
 
-pub fn hide<T: AsRef<Path>>(path: T) -> Result<()> {
-    let path = path.as_ref();
+pub fn hide<T: AsRef<Path>>(r: T) -> Result<PathUpdate<T>> {
+    let path = r.as_ref();
     if !path.exists() {
         return Err(Error::new(ErrorKind::NotFound, "file or directory found"));
     }
@@ -49,13 +50,13 @@ pub fn hide<T: AsRef<Path>>(path: T) -> Result<()> {
         if SetFileAttributesW(file.as_ptr(), attrs | FILE_ATTRIBUTE_HIDDEN) == 0 {
             Err(Error::last_os_error())
         } else {
-            Ok(())
+            Ok(PathUpdate::Unchanged(path))
         }
     }
 }
 
-pub fn show<T: AsRef<Path>>(path: T) -> Result<()> {
-    let path = path.as_ref();
+pub fn show<T: AsRef<Path>>(r: T) -> Result<PathUpdate<T>> {
+    let path = r.as_ref();
     if !path.exists() {
         return Err(Error::new(ErrorKind::NotFound, "file or directory found"));
     }
@@ -69,7 +70,7 @@ pub fn show<T: AsRef<Path>>(path: T) -> Result<()> {
         if SetFileAttributesW(file.as_ptr(), attrs & !FILE_ATTRIBUTE_HIDDEN) == 0 {
             Err(Error::last_os_error())
         } else {
-            Ok(())
+            Ok(PathUpdate::Unchanged(path))
         }
     }
 }

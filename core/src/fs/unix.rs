@@ -30,22 +30,23 @@ use std::ffi::OsStr;
 use std::io::{Error, ErrorKind, Result};
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
+use crate::fs::PathUpdate;
 
-pub fn hide<T: AsRef<Path>>(path: T) -> Result<()> {
-    let path = path.as_ref();
+pub fn hide<T: AsRef<Path>>(r: T) -> Result<PathUpdate<T>> {
+    let path = r.as_ref();
     if !path.exists() {
         return Err(Error::new(ErrorKind::NotFound, "file or directory found"));
     }
     if let Some(str) = path.file_name() {
         let bytes = str.as_bytes();
         if bytes[0] == b'.' {
-            return Ok(()); //path is already hidden.
+            return Ok(PathUpdate::Unchanged(r)); //path is already hidden.
         }
         let mut vec = bytes.to_vec();
         vec.insert(0, b'.');
         let mut copy: PathBuf = path.into();
         copy.set_file_name(OsStr::from_bytes(&vec));
-        return std::fs::rename(path, copy);
+        return std::fs::rename(path, &copy).map(|_| PathUpdate::Changed(copy));
     }
     Err(Error::new(
         ErrorKind::InvalidInput,
@@ -53,21 +54,21 @@ pub fn hide<T: AsRef<Path>>(path: T) -> Result<()> {
     ))
 }
 
-pub fn show<T: AsRef<Path>>(path: T) -> Result<()> {
-    let path = path.as_ref();
+pub fn show<T: AsRef<Path>>(r: T) -> Result<PathUpdate<T>> {
+    let path = r.as_ref();
     if !path.exists() {
         return Err(Error::new(ErrorKind::NotFound, "file or directory found"));
     }
     if let Some(str) = path.file_name() {
         let bytes = str.as_bytes();
         if bytes[0] != b'.' {
-            return Ok(()); //path is already visible.
+            return Ok(PathUpdate::Unchanged(r)); //path is already visible.
         }
         let mut vec = bytes.to_vec();
         vec.remove(0); //remove the '.' character from the file name.
         let mut copy: PathBuf = path.into();
         copy.set_file_name(OsStr::from_bytes(&vec));
-        return std::fs::rename(path, copy);
+        return std::fs::rename(path, &copy).map(|_| PathUpdate::Changed(copy));
     }
     Err(Error::new(
         ErrorKind::InvalidInput,
