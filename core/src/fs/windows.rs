@@ -34,17 +34,6 @@ use windows_sys::Win32::Storage::FileSystem::SetFileAttributesW;
 use windows_sys::Win32::Storage::FileSystem::FILE_ATTRIBUTE_HIDDEN;
 use windows_sys::Win32::Storage::FileSystem::INVALID_FILE_ATTRIBUTES;
 
-/// Hides the given path in the current platform's file explorer.
-///
-/// # Arguments
-///
-/// * `path`: the path to convert.
-///
-/// returns: Result<(), Error>
-///
-/// # Errors
-///
-/// Returns an [Error](Error) if the path couldn't be hidden.
 pub fn hide<T: AsRef<Path>>(path: T) -> Result<()> {
     let path = path.as_ref();
     if !path.exists() {
@@ -65,18 +54,7 @@ pub fn hide<T: AsRef<Path>>(path: T) -> Result<()> {
     }
 }
 
-/// Un-hides the given path in the current platform's file explorer.
-///
-/// # Arguments
-///
-/// * `path`: the path to convert.
-///
-/// returns: Result<(), Error>
-///
-/// # Errors
-///
-/// Returns an [Error](Error) if the path couldn't be un-hidden.
-pub fn unhide<T: AsRef<Path>>(path: T) -> Result<()> {
+pub fn show<T: AsRef<Path>>(path: T) -> Result<()> {
     let path = path.as_ref();
     if !path.exists() {
         return Err(Error::new(ErrorKind::NotFound, "file or directory found"));
@@ -96,31 +74,10 @@ pub fn unhide<T: AsRef<Path>>(path: T) -> Result<()> {
     }
 }
 
-/// Converts a path to an absolute path.
-///
-/// This function will try it's best to avoid using UNC paths which aren't supported by all
-/// applications.
-///
-/// # Arguments
-///
-/// * `path`: the path to convert.
-///
-/// returns: Result<PathBuf, Error>
-///
-/// # Errors
-///
-/// Returns an [Error](Error) if the path couldn't be converted to an absolute path.
 pub fn get_absolute_path<T: AsRef<Path>>(path: T) -> Result<PathBuf> {
     dunce::canonicalize(path)
 }
 
-/// Checks if a given path is hidden.
-///
-/// # Arguments
-///
-/// * `path`: the path to check.
-///
-/// returns: bool
 pub fn is_hidden<T: AsRef<Path>>(path: T) -> bool {
     let path = path.as_ref();
     if !path.exists() {

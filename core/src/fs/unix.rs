@@ -31,17 +31,6 @@ use std::io::{Error, ErrorKind, Result};
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 
-/// Hides the given path in the current platform's file explorer.
-///
-/// # Arguments
-///
-/// * `path`: the path to convert.
-///
-/// returns: Result<(), Error>
-///
-/// # Errors
-///
-/// Returns an [Error](Error) if the path couldn't be hidden.
 pub fn hide<T: AsRef<Path>>(path: T) -> Result<()> {
     let path = path.as_ref();
     if !path.exists() {
@@ -64,18 +53,7 @@ pub fn hide<T: AsRef<Path>>(path: T) -> Result<()> {
     ))
 }
 
-/// Un-hides the given path in the current platform's file explorer.
-///
-/// # Arguments
-///
-/// * `path`: the path to convert.
-///
-/// returns: Result<(), Error>
-///
-/// # Errors
-///
-/// Returns an [Error](Error) if the path couldn't be un-hidden.
-pub fn unhide<T: AsRef<Path>>(path: T) -> Result<()> {
+pub fn show<T: AsRef<Path>>(path: T) -> Result<()> {
     let path = path.as_ref();
     if !path.exists() {
         return Err(Error::new(ErrorKind::NotFound, "file or directory found"));
@@ -97,28 +75,10 @@ pub fn unhide<T: AsRef<Path>>(path: T) -> Result<()> {
     ))
 }
 
-/// Converts a path to an absolute path.
-///
-/// # Arguments
-///
-/// * `path`: the path to convert.
-///
-/// returns: Result<PathBuf, Error>
-///
-/// # Errors
-///
-/// Returns an [Error](Error) if the path couldn't be converted to an absolute path.
 pub fn get_absolute_path<T: AsRef<Path>>(path: T) -> Result<PathBuf> {
     std::fs::canonicalize(path)
 }
 
-/// Checks if a given path is hidden.
-///
-/// # Arguments
-///
-/// * `path`: the path to check.
-///
-/// returns: bool
 pub fn is_hidden<T: AsRef<Path>>(path: T) -> bool {
     if let Some(str) = path.as_ref().file_name() {
         let bytes = str.as_bytes();

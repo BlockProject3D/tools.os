@@ -36,13 +36,104 @@ mod unix;
 mod windows;
 
 #[cfg(unix)]
-pub use unix::{get_absolute_path, hide, is_hidden, unhide};
+use unix as _impl;
 
 #[cfg(windows)]
-pub use windows::{get_absolute_path, hide, is_hidden, unhide};
+use windows as _impl;
+
+/// Converts a path to an absolute path.
+///
+/// # Platform specific behavior
+///
+/// - On Unix, this function redirects to [canonicalize](std::fs::canonicalize).
+///
+/// - On Windows, contrary to [canonicalize](std::fs::canonicalize) which always uses UNC paths
+///   to ensure the highest possible breakage with other Windows applications, this function will
+///   try it's best to avoid using UNC paths which aren't supported by all applications. Currently,
+///   the function redirects to the *dunce* library.
+///
+/// # Arguments
+///
+/// * `path`: the path to convert.
+///
+/// returns: Result<PathBuf, Error>
+///
+/// # Errors
+///
+/// Returns an [Error](Error) if the path couldn't be converted to an absolute path.
+pub fn get_absolute_path<T: AsRef<std::path::Path>>(path: T) -> std::io::Result<std::path::PathBuf> {
+    _impl::get_absolute_path(path)
+}
+
+/// Checks if a given path is hidden.
+///
+/// # Platform specific behavior
+///
+/// - On Unix, this function returns true when the given path has a '.' prefix.
+///
+/// - On Windows, this function return true when GetFileAttributesW succeeds and that the file
+///   attributes contains the attribute *FILE_ATTRIBUTE_HIDDEN*.
+///
+/// # Arguments
+///
+/// * `path`: the path to check.
+///
+/// returns: bool
+pub fn is_hidden<T: AsRef<std::path::Path>>(path: T) -> bool {
+    _impl::is_hidden(path)
+}
+
+/// Hides the given path in the current platform's file explorer.
+///
+/// # Platform specific behavior
+///
+/// - On Unix, this function prefixes the path with a '.' if it does not already have one.
+///
+/// - On Windows, this function calls *GetFileAttributesW* and *SetFileAttributesW* with the
+///   *FILE_ATTRIBUTE_HIDDEN*.
+///
+/// # Arguments
+///
+/// * `path`: the path to convert.
+///
+/// returns: Result<(), Error>
+///
+/// # Errors
+///
+/// Returns an [Error](Error) if the path couldn't be hidden.
+pub fn hide<T: AsRef<std::path::Path>>(path: T) -> std::io::Result<()> {
+    _impl::hide(path)
+}
+
+/// Shows the given path in the current platform's file explorer.
+///
+/// # Platform specific behavior
+///
+/// - On Unix, this function removes the '.' prefix from the given path if it does have it.
+///
+/// - On Windows, this function calls *GetFileAttributesW* and *SetFileAttributesW* and removes the
+///   attribute *FILE_ATTRIBUTE_HIDDEN*.
+///
+/// # Arguments
+///
+/// * `path`: the path to convert.
+///
+/// returns: Result<(), Error>
+///
+/// # Errors
+///
+/// Returns an [Error](Error) if the path couldn't be un-hidden.
+pub fn show<T: AsRef<std::path::Path>>(path: T) -> std::io::Result<()> {
+    _impl::show(path)
+}
+
+mod sealing {
+    pub trait Sealed {}
+    impl Sealed for std::path::Path {}
+}
 
 /// Extension trait for [Path](std::path::Path) for common functionality in BP3D software.
-pub trait PathExt {
+pub trait PathExt: sealing::Sealed {
     /// Ensures the given extension is present on a [Path](std::path::Path). Reallocates a new
     /// [PathBuf](std::path::PathBuf) if no extension is present or that the extension is incorrect.
     fn ensure_extension<S: AsRef<std::ffi::OsStr>>(
@@ -61,6 +152,9 @@ pub trait PathExt {
     ///
     /// Returns an [Error](std::io::Error) if the path couldn't be converted to an absolute path.
     fn get_absolute(&self) -> std::io::Result<std::path::PathBuf>;
+
+    /// Checks if this path is hidden in the current platform's file explorer.
+    fn is_hidden(&self) -> bool;
 }
 
 impl PathExt for std::path::Path {
@@ -83,6 +177,10 @@ impl PathExt for std::path::Path {
 
     fn get_absolute(&self) -> std::io::Result<std::path::PathBuf> {
         get_absolute_path(self)
+    }
+
+    fn is_hidden(&self) -> bool {
+        is_hidden(self)
     }
 }
 
