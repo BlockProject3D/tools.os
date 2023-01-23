@@ -28,8 +28,8 @@
 
 use crate::fs::PathExt;
 use crate::open::Url;
-use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
+use std::ffi::{OsStr, OsString};
+use std::path::Path;
 use std::process::Command;
 use zbus::{blocking::Connection, dbus_proxy, Result};
 
@@ -63,7 +63,7 @@ fn attempt_dbus_call(urls: &[&str], show_items: bool) -> bool {
 }
 
 fn attempt_xdg_open(url: &OsStr) -> bool {
-    let res = Command::new("xdg-open").args([url]).output();
+    let res = Command::new("xdg-open").args([url]).spawn();
     res.is_ok()
 }
 
@@ -87,7 +87,12 @@ pub fn open(url: &Url) -> bool {
 }
 
 pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> bool {
-    let v: std::io::Result<Vec<PathBuf>> = iter.map(|v| v.get_absolute()).collect();
+    let v: std::io::Result<Vec<OsString>> = iter.map(|v| v.get_absolute().map(|v| {
+        let mut s = OsString::with_capacity(v.as_os_str().len() + 7);
+        s.push("file://");
+        s.push(v.as_os_str());
+        s
+    })).collect();
     let paths: Option<Vec<&str>> = match v.as_ref() {
         Ok(v) => v.iter().map(|v| v.as_os_str().to_str()).collect(),
         Err(_) => return false,
