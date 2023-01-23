@@ -33,8 +33,8 @@ use std::path::{Path, PathBuf};
 use std::ffi::OsString;
 use windows_sys::Win32::Foundation::MAX_PATH;
 use windows_sys::Win32::Storage::FileSystem::{
-    GetFileAttributesW, SetFileAttributesW, FILE_ATTRIBUTE_HIDDEN, INVALID_FILE_ATTRIBUTES,
-    GetFullPathNameW
+    GetFileAttributesW, GetFullPathNameW, SetFileAttributesW, FILE_ATTRIBUTE_HIDDEN,
+    INVALID_FILE_ATTRIBUTES,
 };
 
 pub fn hide<T: AsRef<Path>>(r: T) -> Result<PathUpdate<T>> {
@@ -82,7 +82,12 @@ pub fn get_absolute_path<T: AsRef<Path>>(path: T) -> Result<PathBuf> {
     file.push(0x0000);
     unsafe {
         let mut buffer: [u16; MAX_PATH as _] = [0; MAX_PATH as _];
-        let len = GetFullPathNameW(file.as_ptr(), MAX_PATH, &mut buffer as _, std::ptr::null_mut());
+        let len = GetFullPathNameW(
+            file.as_ptr(),
+            MAX_PATH,
+            &mut buffer as _,
+            std::ptr::null_mut(),
+        );
         if len == 0 {
             //Error
             return Err(Error::last_os_error());
@@ -94,12 +99,15 @@ pub fn get_absolute_path<T: AsRef<Path>>(path: T) -> Result<PathBuf> {
                 buffer[1] = b'\\' as _;
                 buffer[2] = b'?' as _;
                 buffer[3] = b'\\' as _;
-                GetFullPathNameW(file.as_ptr(), len, (&mut buffer[4..]).as_mut_ptr(), std::ptr::null_mut());
+                GetFullPathNameW(
+                    file.as_ptr(),
+                    len,
+                    (&mut buffer[4..]).as_mut_ptr(),
+                    std::ptr::null_mut(),
+                );
                 OsString::from_wide(&buffer)
-            },
-            false => {
-                OsString::from_wide(&buffer[..len as _])
             }
+            false => OsString::from_wide(&buffer[..len as _]),
         };
         Ok(PathBuf::from(s))
     }

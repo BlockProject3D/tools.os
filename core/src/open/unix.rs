@@ -87,12 +87,16 @@ pub fn open(url: &Url) -> bool {
 }
 
 pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> bool {
-    let v: std::io::Result<Vec<OsString>> = iter.map(|v| v.get_absolute().map(|v| {
-        let mut s = OsString::with_capacity(v.as_os_str().len() + 7);
-        s.push("file://");
-        s.push(v.as_os_str());
-        s
-    })).collect();
+    let v: std::io::Result<Vec<OsString>> = iter
+        .map(|v| {
+            v.get_absolute().map(|v| {
+                let mut s = OsString::with_capacity(v.as_os_str().len() + 7);
+                s.push("file://");
+                s.push(v.as_os_str());
+                s
+            })
+        })
+        .collect();
     let paths: Option<Vec<&str>> = match v.as_ref() {
         Ok(v) => v.iter().map(|v| v.as_os_str().to_str()).collect(),
         Err(_) => return false,
