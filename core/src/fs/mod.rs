@@ -69,14 +69,17 @@ impl<T: AsRef<std::path::Path>> std::ops::Deref for PathUpdate<T> {
 
 /// Converts a path to an absolute path.
 ///
+/// NOTE: Unlike [canonicalize](std::fs::canonicalize) the paths returned by this function may not
+/// always be normalized.
+///
 /// # Platform specific behavior
 ///
 /// - On Unix, this function redirects to [canonicalize](std::fs::canonicalize).
 ///
-/// - On Windows, contrary to [canonicalize](std::fs::canonicalize) which always uses UNC paths
-///   to ensure the highest possible breakage with other Windows applications, this function will
-///   try it's best to avoid using UNC paths which aren't supported by all applications. Currently,
-///   the function redirects to the *dunce* library.
+/// - On Windows, contrary to [canonicalize](std::fs::canonicalize) which always normalizes the
+///   input path to UNC, this function will try it's best to avoid using UNC paths which aren't
+///   supported by all applications, including some built-in applications. Currently, the function
+///   calls the *GetFullPathNameW* API.
 ///
 /// # Arguments
 ///

@@ -50,7 +50,7 @@ fn main() {
     let url = open::Url::try_from("https://rust-lang.org").expect("Failed to parse valid address!");
     assert!(open::open(url));
     ensure_yes(
-        "Did your browser has opened the rust-lang.org website?",
+        "Did your browser open the rust-lang.org website?",
         "open::open(Url)",
     );
     assert!(open::open(Path::new(".")));
