@@ -68,6 +68,6 @@ of interacting with the platform (No native C API, everything goes through JVM w
 | macOS                    | Yes    | Uses NSWorkspace API.        |
 | macOS (with app sandbox) | Yes    | Uses NSWorkspace API.        |
 | iOS                      | No     | Not yet implemented.         |
-| Linux                    | No     | Uses dbus and xdg-open.      |
+| Linux                    | Yes    | Uses dbus and xdg-open.      |
 | Windows                  | No     | Uses ShellExecuteW.          |
 | Other BSD like systems   | No     | Uses the same code as Linux. |
