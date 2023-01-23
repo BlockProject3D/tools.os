@@ -27,10 +27,10 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::fs::PathUpdate;
+use std::ffi::OsString;
 use std::io::{Error, ErrorKind, Result};
 use std::os::windows::ffi::{OsStrExt, OsStringExt};
 use std::path::{Path, PathBuf};
-use std::ffi::OsString;
 use windows_sys::Win32::Foundation::MAX_PATH;
 use windows_sys::Win32::Storage::FileSystem::{
     GetFileAttributesW, GetFullPathNameW, SetFileAttributesW, FILE_ATTRIBUTE_HIDDEN,
