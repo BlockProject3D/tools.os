@@ -43,22 +43,32 @@ fn ensure_yes(str: &str, func: &str) {
     }
 }
 
+fn assert_open_no_error_ignore_unsupported(res: open::Result) {
+    match res {
+        Err(e) => match e {
+            open::Error::Unsupported => (),
+            _ => panic!("unexpected error when calling open: {}", e)
+        },
+        _ => ()
+    }
+}
+
 fn main() {
     //There is no Assets folder so this should just return None
     assert!(assets::get_app_bundled_asset("file.txt").is_none());
 
     let url = open::Url::try_from("https://rust-lang.org").expect("Failed to parse valid address!");
-    assert!(open::open(url));
+    assert_open_no_error_ignore_unsupported(open::open(url));
     ensure_yes(
         "Did your browser open the rust-lang.org website?",
         "open::open(Url)",
     );
-    assert!(open::open(Path::new(".")));
+    assert_open_no_error_ignore_unsupported(open::open(Path::new(".")));
     ensure_yes(
         "Did your file explorer open to the current working directory?",
         "open::open(Path)",
     );
-    assert!(open::show_in_files(
+    assert_open_no_error_ignore_unsupported(open::show_in_files(
         [Path::new("./Cargo.toml"), Path::new("./Cargo.lock")].into_iter()
     ));
     ensure_yes(
@@ -69,13 +79,13 @@ fn main() {
     assert!(!test_path.is_hidden());
     let test_path = fs::hide(test_path).expect("Failed to hide test file (Cargo.lock)");
     assert!(test_path.is_hidden());
-    assert!(open::open(test_path.parent().unwrap()));
+    assert_open_no_error_ignore_unsupported(open::open(test_path.parent().unwrap()));
     ensure_yes(
         "Is Cargo.lock now invisible from the file explorer?",
         "fs::hide",
     );
     let test_path = fs::show(test_path).expect("Failed to show test file (Cargo.lock)");
-    assert!(open::open(test_path.parent().unwrap()));
+    assert_open_no_error_ignore_unsupported(open::open(test_path.parent().unwrap()));
     ensure_yes(
         "Is Cargo.lock now visible from the file explorer?",
         "fs::show",
