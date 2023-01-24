@@ -27,7 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::fs::PathExt;
-use crate::open::{Url, Result, Error};
+use crate::open::{Error, Result, Url};
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::process::Command;
@@ -47,8 +47,8 @@ trait FileManager {
 }
 
 fn attempt_dbus_call(urls: &[&str], show_items: bool) -> Result<()> {
-    let con = Connection::session()
-        .map_err(|e| Error::Other(format!("DBus connection error: {}", e)))?;
+    let con =
+        Connection::session().map_err(|e| Error::Other(format!("DBus connection error: {}", e)))?;
     let proxy = FileManagerProxyBlocking::new(&con)
         .map_err(|e| Error::Other(format!("DBus error: {}", e)))?;
     let res = match show_items {
@@ -57,7 +57,7 @@ fn attempt_dbus_call(urls: &[&str], show_items: bool) -> Result<()> {
     };
     match res {
         Err(e) => Err(Error::Other(format!("DBus error: {}", e)))?,
-        Ok(_) => Ok(())
+        Ok(_) => Ok(()),
     }
 }
 
@@ -67,8 +67,8 @@ fn attempt_xdg_open(url: &OsStr) -> Result<()> {
         Ok(_) => Ok(()),
         Err(e) => match e.kind() {
             std::io::ErrorKind::NotFound => Err(Error::Unsupported),
-            _ => Err(Error::Io(e))
-        }
+            _ => Err(Error::Io(e)),
+        },
     }
 }
 
@@ -80,7 +80,7 @@ pub fn open(url: &Url) -> Result<()> {
     }
     match uri.to_str() {
         Some(v) => attempt_dbus_call(&[v], false),
-        None => attempt_xdg_open(&uri)
+        None => attempt_xdg_open(&uri),
     }
 }
 
@@ -99,6 +99,8 @@ pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> Result<()> {
     let paths: Option<Vec<&str>> = paths.iter().map(|v| v.as_os_str().to_str()).collect();
     match paths {
         Some(v) => attempt_dbus_call(&v, true),
-        None => Err(Error::Other("one ore more paths contains invalid UTF-8 characters".into()))
+        None => Err(Error::Other(
+            "one ore more paths contains invalid UTF-8 characters".into(),
+        )),
     }
 }

@@ -26,7 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::open::{Url, Result, Error};
+use crate::open::{Error, Result, Url};
 use std::path::Path;
 
 pub fn open(_: &Url) -> Result<()> {

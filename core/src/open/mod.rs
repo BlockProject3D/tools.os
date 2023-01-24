@@ -29,8 +29,8 @@
 //! This module provides cross-platform functions to open files, urls and select files in the file
 //! explorer.
 
-mod url;
 mod error;
+mod url;
 
 #[cfg(target_os = "macos")]
 mod macos;
@@ -56,8 +56,8 @@ use unix as _impl;
 #[cfg(target_os = "windows")]
 use windows as _impl;
 
+pub use error::{Error, Result};
 pub use url::{InvalidUrl, Url};
-pub use error::{Result, Error};
 
 /// Open a file explorer selecting the different files given as iterator.
 ///

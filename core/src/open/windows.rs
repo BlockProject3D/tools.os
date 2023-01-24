@@ -27,7 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::fs::PathExt;
-use crate::open::{Url, Result, Error};
+use crate::open::{Error, Result, Url};
 use std::os::windows::ffi::OsStrExt;
 use std::path::Path;
 use windows_sys::core::PCWSTR;
@@ -38,9 +38,13 @@ pub fn open(url: &Url) -> Result<()> {
     unsafe {
         let operation = ['o' as u16, 'p' as u16, 'e' as u16, 'n' as u16, 0x0000];
         let mut urlw: Vec<u16> = match url.is_path() {
-            true => Path::new(url.path()).get_absolute()
-                .map_err(Error::Io)?.as_os_str().encode_wide().collect(),
-            false => url.to_os_str().map_err(Error::Io)?.encode_wide().collect()
+            true => Path::new(url.path())
+                .get_absolute()
+                .map_err(Error::Io)?
+                .as_os_str()
+                .encode_wide()
+                .collect(),
+            false => url.to_os_str().map_err(Error::Io)?.encode_wide().collect(),
         };
         urlw.push(0x0000);
         let operation: PCWSTR = operation.as_ptr();
@@ -54,7 +58,7 @@ pub fn open(url: &Url) -> Result<()> {
         );
         match res > 32 {
             true => Ok(()),
-            false => Err(Error::Io(std::io::Error::last_os_error()))
+            false => Err(Error::Io(std::io::Error::last_os_error())),
         }
     }
 }

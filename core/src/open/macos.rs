@@ -27,7 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::fs::PathExt;
-use crate::open::{Url, Result, Error};
+use crate::open::{Error, Result, Url};
 use objc::class;
 use objc::msg_send;
 use objc::runtime::{Object, BOOL, NO};
@@ -59,7 +59,7 @@ pub fn open(url: &Url) -> Result<()> {
         let _: () = msg_send![url, release]; // release url
         match res == NO {
             true => Err(Error::Other("failed to open url".into())),
-            false => Ok(())
+            false => Ok(()),
         }
     }
 }
