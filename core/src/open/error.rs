@@ -52,7 +52,7 @@ pub enum Error {
 }
 
 /// The result type of an open operation.
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result = std::result::Result<(), Error>;
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

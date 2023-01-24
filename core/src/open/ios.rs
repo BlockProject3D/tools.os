@@ -29,12 +29,12 @@
 use crate::open::{Url, Result, Error};
 use std::path::Path;
 
-pub fn open(_: &Url) -> Result<()> {
+pub fn open(_: &Url) -> Result {
     //TODO: Check Apple docs if there's any way to do this on iOS.
     Err(Error::Unsupported)
 }
 
-pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(_: I) -> Result<()> {
+pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(_: I) -> Result {
     //Unsupported on iOS
     Err(Error::Unsupported)
 }

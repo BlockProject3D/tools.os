@@ -34,7 +34,7 @@ use windows_sys::core::PCWSTR;
 use windows_sys::Win32::UI::Shell::ShellExecuteW;
 use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOW;
 
-pub fn open(url: &Url) -> Result<()> {
+pub fn open(url: &Url) -> Result {
     unsafe {
         let operation = ['o' as u16, 'p' as u16, 'e' as u16, 'n' as u16, 0x0000];
         let mut urlw: Vec<u16> = match url.is_path() {
@@ -59,6 +59,6 @@ pub fn open(url: &Url) -> Result<()> {
     }
 }
 
-pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(_: I) -> Result<()> {
+pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(_: I) -> Result {
     Err(Error::Unsupported)
 }

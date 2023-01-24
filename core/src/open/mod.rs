@@ -81,7 +81,7 @@ pub use error::{Result, Error};
 ///
 ///   **Note: Not all file explorers are created equal under Linux, so the behavior of this
 ///   function depends on the file explorer.**
-pub fn show_in_files<'a, I: Iterator<Item = &'a std::path::Path>>(iter: I) -> Result<()> {
+pub fn show_in_files<'a, I: Iterator<Item = &'a std::path::Path>>(iter: I) -> Result {
     _impl::show_in_files(iter)
 }
 
@@ -106,6 +106,6 @@ pub fn show_in_files<'a, I: Iterator<Item = &'a std::path::Path>>(iter: I) -> Re
 /// * `url`: the URL to open.
 ///
 /// returns: bool
-pub fn open<'a, T: Into<Url<'a>>>(url: T) -> Result<()> {
+pub fn open<'a, T: Into<Url<'a>>>(url: T) -> Result {
     _impl::open(&url.into())
 }

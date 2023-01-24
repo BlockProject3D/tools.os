@@ -44,7 +44,7 @@ const NS_UTF8_STRING_ENCODING: c_ulong = 4;
 #[link(name = "AppKit", kind = "framework")]
 extern "C" {}
 
-pub fn open(url: &Url) -> Result<()> {
+pub fn open(url: &Url) -> Result {
     let url_str = url.to_os_str().map_err(Error::Io)?;
     unsafe {
         let nsstring = class!(NSString);
@@ -64,7 +64,7 @@ pub fn open(url: &Url) -> Result<()> {
     }
 }
 
-pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> Result<()> {
+pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> Result {
     let nsthread = class!(NSThread);
     let nsrunloop = class!(NSRunLoop);
     let nsdate = class!(NSDate);

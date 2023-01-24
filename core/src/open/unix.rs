@@ -27,7 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::fs::PathExt;
-use crate::open::{Url, Result, Error};
+use crate::open::{Url, Result as OpenResult, Error};
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::process::Command;
@@ -46,7 +46,7 @@ trait FileManager {
     fn show_items(&self, uris: &[&str], startup_id: &str) -> Result<()>;
 }
 
-fn attempt_dbus_call(urls: &[&str], show_items: bool) -> Result<()> {
+fn attempt_dbus_call(urls: &[&str], show_items: bool) -> OpenResult {
     let con = Connection::session()
         .map_err(|e| Error::Other(format!("DBus connection error: {}", e)))?;
     let proxy = FileManagerProxyBlocking::new(&con)
@@ -61,7 +61,7 @@ fn attempt_dbus_call(urls: &[&str], show_items: bool) -> Result<()> {
     }
 }
 
-fn attempt_xdg_open(url: &OsStr) -> Result<()> {
+fn attempt_xdg_open(url: &OsStr) -> OpenResult {
     let res = Command::new("xdg-open").args([url]).spawn();
     match res {
         Ok(_) => Ok(()),
@@ -72,7 +72,7 @@ fn attempt_xdg_open(url: &OsStr) -> Result<()> {
     }
 }
 
-pub fn open(url: &Url) -> Result<()> {
+pub fn open(url: &Url) -> OpenResult {
     let path = Path::new(url.path());
     let uri = url.to_os_str().map_err(Error::Io)?;
     if !url.is_path() || !path.is_dir() {
@@ -84,7 +84,7 @@ pub fn open(url: &Url) -> Result<()> {
     }
 }
 
-pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> Result<()> {
+pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> OpenResult {
     let v: std::io::Result<Vec<OsString>> = iter
         .map(|v| {
             v.get_absolute().map(|v| {
