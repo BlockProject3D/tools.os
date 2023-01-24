@@ -27,7 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::fs::PathExt;
-use crate::open::{Url, Result as OpenResult, Error};
+use crate::open::{Error, Result as OpenResult, Url};
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::process::Command;
@@ -47,8 +47,8 @@ trait FileManager {
 }
 
 fn attempt_dbus_call(urls: &[&str], show_items: bool) -> OpenResult {
-    let con = Connection::session()
-        .map_err(|e| Error::Other(format!("DBus connection error: {}", e)))?;
+    let con =
+        Connection::session().map_err(|e| Error::Other(format!("DBus connection error: {}", e)))?;
     let proxy = FileManagerProxyBlocking::new(&con)
         .map_err(|e| Error::Other(format!("DBus error: {}", e)))?;
     let res = match show_items {

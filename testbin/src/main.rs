@@ -47,9 +47,9 @@ fn assert_open_no_error_ignore_unsupported(res: open::Result) {
     match res {
         Err(e) => match e {
             open::Error::Unsupported => (),
-            _ => panic!("unexpected error when calling open: {}", e)
+            _ => panic!("unexpected error when calling open: {}", e),
         },
-        _ => ()
+        _ => (),
     }
 }
 
@@ -69,7 +69,7 @@ fn main() {
         "open::open(Path)",
     );
     assert_open_no_error_ignore_unsupported(open::show_in_files(
-        [Path::new("./Cargo.toml"), Path::new("./Cargo.lock")].into_iter()
+        [Path::new("./Cargo.toml"), Path::new("./Cargo.lock")].into_iter(),
     ));
     ensure_yes(
         "Did your file explorer open to the current working directory selecting both Cargo files?",
