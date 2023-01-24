@@ -57,7 +57,7 @@ fn attempt_dbus_call(urls: &[&str], show_items: bool) -> OpenResult {
     };
     match res {
         Err(e) => Err(Error::Other(format!("DBus error: {}", e)))?,
-        Ok(_) => Ok(())
+        Ok(_) => Ok(()),
     }
 }
 
@@ -67,8 +67,8 @@ fn attempt_xdg_open(url: &OsStr) -> OpenResult {
         Ok(_) => Ok(()),
         Err(e) => match e.kind() {
             std::io::ErrorKind::NotFound => Err(Error::Unsupported),
-            _ => Err(Error::Io(e))
-        }
+            _ => Err(Error::Io(e)),
+        },
     }
 }
 
@@ -80,7 +80,7 @@ pub fn open(url: &Url) -> OpenResult {
     }
     match uri.to_str() {
         Some(v) => attempt_dbus_call(&[v], false),
-        None => attempt_xdg_open(&uri)
+        None => attempt_xdg_open(&uri),
     }
 }
 
@@ -99,6 +99,8 @@ pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> OpenResult {
     let paths: Option<Vec<&str>> = paths.iter().map(|v| v.as_os_str().to_str()).collect();
     match paths {
         Some(v) => attempt_dbus_call(&v, true),
-        None => Err(Error::Other("one ore more paths contains invalid UTF-8 characters".into()))
+        None => Err(Error::Other(
+            "one ore more paths contains invalid UTF-8 characters".into(),
+        )),
     }
 }

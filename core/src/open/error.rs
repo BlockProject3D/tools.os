@@ -48,7 +48,7 @@ pub enum Error {
     ///
     /// This variant is typically returned in case of DBus error under non Apple/Android unix
     /// systems.
-    Other(String)
+    Other(String),
 }
 
 /// The result type of an open operation.
@@ -59,9 +59,9 @@ impl Display for Error {
         match self {
             Error::Io(e) => write!(f, "io error: {}", e),
             Error::Unsupported => f.write_str("unsupported operation"),
-            Error::Other(e) => write!(f, "other OS error: {}", e)
+            Error::Other(e) => write!(f, "other OS error: {}", e),
         }
     }
 }
 
-impl std::error::Error for Error { }
+impl std::error::Error for Error {}
