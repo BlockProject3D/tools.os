@@ -27,7 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::fs::PathExt;
-use crate::open::Url;
+use crate::open::{Url, Result, Error};
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::process::Command;
@@ -46,47 +46,45 @@ trait FileManager {
     fn show_items(&self, uris: &[&str], startup_id: &str) -> Result<()>;
 }
 
-fn attempt_dbus_call(urls: &[&str], show_items: bool) -> bool {
-    let con = match Connection::session() {
-        Ok(v) => v,
-        Err(_) => return false,
-    };
-    let proxy = match FileManagerProxyBlocking::new(&con) {
-        Ok(v) => v,
-        Err(_) => return false,
-    };
+fn attempt_dbus_call(urls: &[&str], show_items: bool) -> Result<()> {
+    let con = Connection::session()
+        .map_err(|e| Error::Other(format!("DBus connection error: {}", e)))?;
+    let proxy = FileManagerProxyBlocking::new(&con)
+        .map_err(|e| Error::Other(format!("DBus error: {}", e)))?;
     let res = match show_items {
         true => proxy.show_items(urls, "test"),
         false => proxy.show_folders(urls, "test"),
     };
-    res.is_ok()
+    match res {
+        Err(e) => Err(Error::Other(format!("DBus error: {}", e)))?,
+        Ok(_) => Ok(())
+    }
 }
 
-fn attempt_xdg_open(url: &OsStr) -> bool {
+fn attempt_xdg_open(url: &OsStr) -> Result<()> {
     let res = Command::new("xdg-open").args([url]).spawn();
-    res.is_ok()
+    match res {
+        Ok(_) => Ok(()),
+        Err(e) => match e.kind() {
+            std::io::ErrorKind::NotFound => Err(Error::Unsupported),
+            _ => Err(Error::Io(e))
+        }
+    }
 }
 
-pub fn open(url: &Url) -> bool {
+pub fn open(url: &Url) -> Result<()> {
     let path = Path::new(url.path());
-    let uri = match url.to_os_str().ok() {
-        Some(v) => v,
-        None => return false,
-    };
+    let uri = url.to_os_str().map_err(Error::Io)?;
     if !url.is_path() || !path.is_dir() {
         return attempt_xdg_open(&uri);
     }
-    let mut flag = match uri.to_str() {
+    match uri.to_str() {
         Some(v) => attempt_dbus_call(&[v], false),
-        None => false,
-    };
-    if !flag {
-        flag = attempt_xdg_open(&uri);
+        None => attempt_xdg_open(&uri)
     }
-    flag
 }
 
-pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> bool {
+pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> Result<()> {
     let v: std::io::Result<Vec<OsString>> = iter
         .map(|v| {
             v.get_absolute().map(|v| {
@@ -97,12 +95,10 @@ pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> bool {
             })
         })
         .collect();
-    let paths: Option<Vec<&str>> = match v.as_ref() {
-        Ok(v) => v.iter().map(|v| v.as_os_str().to_str()).collect(),
-        Err(_) => return false,
-    };
+    let paths = v.map_err(Error::Io)?;
+    let paths: Option<Vec<&str>> = paths.iter().map(|v| v.as_os_str().to_str()).collect();
     match paths {
         Some(v) => attempt_dbus_call(&v, true),
-        None => false,
+        None => Err(Error::Other("one ore more paths contains invalid UTF-8 characters".into()))
     }
 }
