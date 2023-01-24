@@ -27,31 +27,20 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::fs::PathExt;
-use crate::open::Url;
+use crate::open::{Url, Result, Error};
 use std::os::windows::ffi::OsStrExt;
 use std::path::Path;
 use windows_sys::core::PCWSTR;
 use windows_sys::Win32::UI::Shell::ShellExecuteW;
 use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOW;
 
-pub fn open(url: &Url) -> bool {
+pub fn open(url: &Url) -> Result<()> {
     unsafe {
         let operation = ['o' as u16, 'p' as u16, 'e' as u16, 'n' as u16, 0x0000];
         let mut urlw: Vec<u16> = match url.is_path() {
-            true => {
-                let path = match Path::new(url.path()).get_absolute() {
-                    Ok(v) => v,
-                    Err(_) => return false,
-                };
-                path.as_os_str().encode_wide().collect()
-            }
-            false => {
-                let s = match url.to_os_str() {
-                    Ok(v) => v,
-                    Err(_) => return false,
-                };
-                s.encode_wide().collect()
-            }
+            true => Path::new(url.path()).get_absolute()
+                .map_err(Error::Io)?.as_os_str().encode_wide().collect(),
+            false => url.to_os_str().map_err(Error::Io)?.encode_wide().collect()
         };
         urlw.push(0x0000);
         let operation: PCWSTR = operation.as_ptr();
@@ -63,10 +52,13 @@ pub fn open(url: &Url) -> bool {
             std::ptr::null_mut(),
             SW_SHOW as _,
         );
-        res > 32
+        match res > 32 {
+            true => Ok(()),
+            false => Err(Error::Io(std::io::Error::last_os_error()))
+        }
     }
 }
 
-pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(_: I) -> bool {
-    false
+pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(_: I) -> Result<()> {
+    Err(Error::Unsupported)
 }
