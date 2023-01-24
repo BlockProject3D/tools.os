@@ -27,7 +27,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::fs::PathExt;
-use crate::open::Url;
+use crate::open::{Url, Result, Error};
 use objc::class;
 use objc::msg_send;
 use objc::runtime::{Object, BOOL, NO};
@@ -44,11 +44,8 @@ const NS_UTF8_STRING_ENCODING: c_ulong = 4;
 #[link(name = "AppKit", kind = "framework")]
 extern "C" {}
 
-pub fn open(url: &Url) -> bool {
-    let url_str = match url.to_os_str() {
-        Ok(v) => v,
-        Err(_) => return false,
-    };
+pub fn open(url: &Url) -> Result<()> {
+    let url_str = url.to_os_str().map_err(Error::Io)?;
     unsafe {
         let nsstring = class!(NSString);
         let nsurl = class!(NSURL);
@@ -58,13 +55,16 @@ pub fn open(url: &Url) -> bool {
         let url: *mut Object = msg_send![nsurl, URLWithString: str];
         let _: () = msg_send![str, release]; // release string (we used alloc)
         let workspace: *mut Object = msg_send![nsworkspace, sharedWorkspace];
-        let _: () = msg_send![workspace, openURL: url];
+        let res: BOOL = msg_send![workspace, openURL: url];
         let _: () = msg_send![url, release]; // release url
-        true
+        match res == NO {
+            true => Err(Error::Other("failed to open url".into())),
+            false => Ok(())
+        }
     }
 }
 
-pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> bool {
+pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> Result<()> {
     let nsthread = class!(NSThread);
     let nsrunloop = class!(NSRunLoop);
     let nsdate = class!(NSDate);
@@ -75,7 +75,7 @@ pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> bool {
     unsafe {
         let flag: BOOL = msg_send![nsthread, isMainThread];
         if flag == NO {
-            return false;
+            return Err(Error::Other("current thread is not the main thread".into()));
         }
     }
     let v: std::io::Result<Vec<*mut Object>> = iter.map(|v| v.get_absolute().map(|v| {
@@ -87,10 +87,7 @@ pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> bool {
             url
         }
     })).collect();
-    let urls = match v {
-        Ok(v) => v,
-        Err(_) => return false,
-    };
+    let urls = v.map_err(Error::Io)?;
     unsafe {
         let arr: *mut Object =
             msg_send![nsarray, arrayWithObjects: urls.as_ptr() count: urls.len() as c_ulong];
@@ -107,5 +104,5 @@ pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> bool {
         let _: () = msg_send![runloop, runUntilDate: date];
         let _: () = msg_send![date, release];
     }
-    true
+    Ok(())
 }

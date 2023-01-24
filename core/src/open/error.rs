@@ -26,15 +26,42 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::open::{Url, Result, Error};
-use std::path::Path;
+use std::fmt::{Display, Formatter};
 
-pub fn open(_: &Url) -> Result<()> {
-    //TODO: Check Apple docs if there's any way to do this on iOS.
-    Err(Error::Unsupported)
+/// Error cases for open functions.
+#[derive(Debug)]
+pub enum Error {
+    /// An IO error.
+    ///
+    /// This error typically occurs when the URL object failed to create its OsString
+    /// representation or when getting the absolute path of a file.
+    Io(std::io::Error),
+
+    /// The current platform does not support this operation.
+    ///
+    /// This error may be thrown for example, when calling show_in_files on iOS or on Windows.
+    /// Another case is when [open](open) is called with a web page on a Linux system with no
+    /// xdg-open script/binary present in the PATH.
+    Unsupported,
+
+    /// Another kind of system error.
+    ///
+    /// This variant is typically returned in case of DBus error under non Apple/Android unix
+    /// systems.
+    Other(String)
 }
 
-pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(_: I) -> Result<()> {
-    //Unsupported on iOS
-    Err(Error::Unsupported)
+/// The result type of an open operation.
+pub type Result<T> = std::result::Result<T, Error>;
+
+impl Display for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::Io(e) => write!(f, "io error: {}", e),
+            Error::Unsupported => f.write_str("unsupported operation"),
+            Error::Other(e) => write!(f, "other OS error: {}", e)
+        }
+    }
 }
+
+impl std::error::Error for Error { }

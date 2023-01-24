@@ -30,6 +30,7 @@
 //! explorer.
 
 mod url;
+mod error;
 
 #[cfg(target_os = "macos")]
 mod macos;
@@ -56,6 +57,7 @@ use unix as _impl;
 use windows as _impl;
 
 pub use url::{InvalidUrl, Url};
+pub use error::{Result, Error};
 
 /// Open a file explorer selecting the different files given as iterator.
 ///
@@ -79,7 +81,7 @@ pub use url::{InvalidUrl, Url};
 ///
 ///   **Note: Not all file explorers are created equal under Linux, so the behavior of this
 ///   function depends on the file explorer.**
-pub fn show_in_files<'a, I: Iterator<Item = &'a std::path::Path>>(iter: I) -> bool {
+pub fn show_in_files<'a, I: Iterator<Item = &'a std::path::Path>>(iter: I) -> Result<()> {
     _impl::show_in_files(iter)
 }
 
@@ -104,6 +106,6 @@ pub fn show_in_files<'a, I: Iterator<Item = &'a std::path::Path>>(iter: I) -> bo
 /// * `url`: the URL to open.
 ///
 /// returns: bool
-pub fn open<'a, T: Into<Url<'a>>>(url: T) -> bool {
+pub fn open<'a, T: Into<Url<'a>>>(url: T) -> Result<()> {
     _impl::open(&url.into())
 }
