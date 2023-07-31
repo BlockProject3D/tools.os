@@ -89,7 +89,7 @@ impl<T: AsRef<std::path::Path>> std::ops::Deref for PathUpdate<T> {
 ///
 /// # Errors
 ///
-/// Returns an [Error](Error) if the path couldn't be converted to an absolute path.
+/// Returns an [Error](std::io::Error) if the path couldn't be converted to an absolute path.
 pub fn get_absolute_path<T: AsRef<std::path::Path>>(
     path: T,
 ) -> std::io::Result<std::path::PathBuf> {
@@ -134,7 +134,7 @@ pub fn is_hidden<T: AsRef<std::path::Path>>(path: T) -> bool {
 ///
 /// # Errors
 ///
-/// Returns an [Error](Error) if the path couldn't be hidden.
+/// Returns an [Error](std::io::Error) if the path couldn't be hidden.
 pub fn hide<T: AsRef<std::path::Path>>(path: T) -> std::io::Result<PathUpdate<T>> {
     _impl::hide(path)
 }
@@ -159,7 +159,7 @@ pub fn hide<T: AsRef<std::path::Path>>(path: T) -> std::io::Result<PathUpdate<T>
 ///
 /// # Errors
 ///
-/// Returns an [Error](Error) if the path couldn't be un-hidden.
+/// Returns an [Error](std::io::Error) if the path couldn't be un-hidden.
 pub fn show<T: AsRef<std::path::Path>>(path: T) -> std::io::Result<PathUpdate<T>> {
     _impl::show(path)
 }

@@ -40,7 +40,7 @@ pub enum Error {
     /// The current platform does not support this operation.
     ///
     /// This error may be thrown for example, when calling show_in_files on iOS or on Windows.
-    /// Another case is when [open](open) is called with a web page on a Linux system with no
+    /// Another case is when [open](super::open) is called with a web page on a Linux system with no
     /// xdg-open script/binary present in the PATH.
     Unsupported,
 
