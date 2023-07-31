@@ -91,7 +91,7 @@ impl<'a> App<'a> {
     /// Use this directory to store cached files such as downloads, intermediate files, etc.
     ///
     /// This function first tries to use [get_app_cache](system::get_app_cache)/{APP} and
-    /// falls back [get_data](App::get_data)/Cache.
+    /// falls back to [get_data](App::get_data)/Cache.
     pub fn get_cache(&self) -> Option<AppPath> {
         self.cache
             .get_or_try_init(|| {
@@ -106,7 +106,7 @@ impl<'a> App<'a> {
     /// Use this directory to store any content the user should see and alter.
     ///
     /// This function first tries to use [get_app_documents](system::get_app_documents) and
-    /// falls back [get_data](App::get_data)/Documents.
+    /// falls back to [get_data](App::get_data)/Documents.
     pub fn get_documents(&self) -> Option<AppPath> {
         // If this is OK then we must be running from a sandboxed system
         // where the app has it's own public documents folder, otherwise
@@ -124,11 +124,7 @@ impl<'a> App<'a> {
     /// Use this directory to store all logs. The user can view and alter this directory.
     ///
     /// This function first tries to use [get_app_logs](system::get_app_logs)/{APP} and
-    /// falls back [get_documents](App::get_documents)/Logs.
-    ///
-    /// # Errors
-    ///
-    /// Returns an [Io](self::Error::Io) if some directory couldn't be created.
+    /// falls back to [get_documents](App::get_documents)/Logs.
     pub fn get_logs(&self) -> Option<AppPath> {
         // Logs should be public and not contain any sensitive information, so store that in
         // the app's public documents.
@@ -146,7 +142,7 @@ impl<'a> App<'a> {
     /// This directory is not intended for direct user access.
     ///
     /// This function first tries to use [get_app_config](system::get_app_config)/{APP} and
-    /// falls back [get_data](App::get_data)/Config.
+    /// falls back to [get_data](App::get_data)/Config.
     pub fn get_config(&self) -> Option<AppPath> {
         self.config
             .get_or_try_init(|| {
