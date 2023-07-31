@@ -26,12 +26,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::path::{Path, PathBuf};
 use std::io::Result;
+use std::path::{Path, PathBuf};
 
 /// An application path.
 pub struct AppPath<'a> {
-    path: &'a Path
+    path: &'a Path,
 }
 
 impl<'a> AsRef<Path> for AppPath<'a> {

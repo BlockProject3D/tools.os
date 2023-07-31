@@ -33,8 +33,8 @@ use std::path::PathBuf;
 
 pub use self::path::AppPath;
 
-pub mod system;
 mod path;
+pub mod system;
 
 /// Represents the application's directories.
 ///
@@ -80,10 +80,10 @@ impl<'a> App<'a> {
     /// never occur on any supported system except if such system is broken.
     pub fn get_data(&self) -> Option<AppPath> {
         self.data
-            .get_or_try_init(|| {
-                system::get_app_data()
-                    .ok_or(()).map(|v| v.join(self.name))
-            }).ok().map(|v| v.as_ref()).map(AppPath::new)
+            .get_or_try_init(|| system::get_app_data().ok_or(()).map(|v| v.join(self.name)))
+            .ok()
+            .map(|v| v.as_ref())
+            .map(AppPath::new)
     }
 
     /// Returns the path to this application's cache.
@@ -98,7 +98,10 @@ impl<'a> App<'a> {
                 system::get_app_cache()
                     .or_else(|| self.get_data().map(|v| v.join("Cache")))
                     .ok_or(())
-            }).ok().map(|v| v.as_ref()).map(AppPath::new)
+            })
+            .ok()
+            .map(|v| v.as_ref())
+            .map(AppPath::new)
     }
 
     /// Returns the path to this application's public documents.
@@ -116,7 +119,10 @@ impl<'a> App<'a> {
                 system::get_app_documents()
                     .or_else(|| self.get_data().map(|v| v.join("Documents")))
                     .ok_or(())
-            }).ok().map(|v| v.as_ref()).map(AppPath::new)
+            })
+            .ok()
+            .map(|v| v.as_ref())
+            .map(AppPath::new)
     }
 
     /// Returns the path to this application's logs.
@@ -133,7 +139,10 @@ impl<'a> App<'a> {
                 system::get_app_logs()
                     .or_else(|| self.get_documents().map(|v| v.join("Logs")))
                     .ok_or(())
-            }).ok().map(|v| v.as_ref()).map(AppPath::new)
+            })
+            .ok()
+            .map(|v| v.as_ref())
+            .map(AppPath::new)
     }
 
     /// Returns the path to this application's config.
@@ -149,7 +158,10 @@ impl<'a> App<'a> {
                 system::get_app_config()
                     .or_else(|| self.get_data().map(|v| v.join("Config")))
                     .ok_or(())
-            }).ok().map(|v| v.as_ref()).map(AppPath::new)
+            })
+            .ok()
+            .map(|v| v.as_ref())
+            .map(AppPath::new)
     }
 }
 
