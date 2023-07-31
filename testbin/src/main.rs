@@ -47,7 +47,7 @@ fn assert_open_no_error_ignore_unsupported(res: open::Result) {
     if let Err(e) = res {
         match e {
             open::Error::Unsupported => (),
-            _ => panic!("unexpected error when calling open: {}", e)
+            _ => panic!("unexpected error when calling open: {}", e),
         }
     }
 }
