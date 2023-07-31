@@ -26,22 +26,31 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Operating System tools and extensions designed for BlockProject3D.
+//! This module contains tools to simplify parsing environment variables.
 
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
-#![warn(missing_docs)]
+use std::ffi::{OsStr, OsString};
 
-#[cfg(feature = "dirs")]
-pub mod dirs;
+/// Gets the content of an environment variable.
+///
+/// Returns None if the variable does not exist.
+pub fn get_os<T: AsRef<OsStr>>(name: T) -> Option<OsString> {
+    std::env::var_os(name)
+}
 
-#[cfg(feature = "assets")]
-pub mod assets;
+/// Gets the content of an environment variable.
+///
+/// Returns None if the variable does not exist or is not valid UTF-8.
+pub fn get<T: AsRef<OsStr>>(name: T) -> Option<String> {
+    get_os(name).and_then(|v| v.into_string().ok())
+}
 
-#[cfg(feature = "open")]
-pub mod open;
-
-#[cfg(feature = "fs")]
-pub mod fs;
-
-#[cfg(feature = "env")]
-pub mod env;
+/// Gets a boolean environment variable.
+///
+/// Returns None if the variable does not exist or the format is unrecognized.
+pub fn get_bool<T: AsRef<OsStr>>(name: T) -> Option<bool> {
+    match &*get(name)? {
+        "off" | "OFF" | "FALSE" | "false" | "0" => Some(false),
+        "on" | "ON" | "TRUE" | "true" | "1" => Some(true),
+        _ => None,
+    }
+}

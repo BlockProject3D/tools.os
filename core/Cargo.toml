@@ -39,6 +39,7 @@ dirs = ["once_cell", "objc", "objc-foundation", "windows-sys"]
 open = ["fs", "zbus", "windows-sys", "windows-sys/Win32_UI_WindowsAndMessaging", "objc"]
 fs = ["windows-sys"]
 assets = ["libc", "objc", "objc-foundation", "windows-sys/Win32_System_LibraryLoader"]
+env = []
 
 
 [package.metadata.docs.rs]
