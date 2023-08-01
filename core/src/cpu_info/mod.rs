@@ -111,11 +111,11 @@ use unknown as _impl;
 /// # Platform specific behavior
 ///
 /// - On macOS and iOS, this function calls *sysctlbyname* with key names `machdep.cpu.core_count` and `machdep.cpu.brand_string`.
-/// 
+///
 /// - On other BSD systems, this function calls *sysctlbyname* with key names `hw.ncpu` and `hw.model`.
 ///
 /// - On any x86_64 system except BSD and macos, this function uses the cpuid instruction through the raw-cpuid library.
-/// 
+///
 /// - This function returns None for any other system not present in this list.
 pub fn read_cpu_info() -> Option<CpuInfo> {
     _impl::read_cpu_info()
