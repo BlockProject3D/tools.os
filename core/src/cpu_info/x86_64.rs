@@ -26,25 +26,9 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Operating System tools and extensions designed for BlockProject3D.
+use crate::cpu_info::CpuInfo;
+use raw_cpuid::CpuId;
 
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
-#![warn(missing_docs)]
-
-#[cfg(feature = "dirs")]
-pub mod dirs;
-
-#[cfg(feature = "assets")]
-pub mod assets;
-
-#[cfg(feature = "open")]
-pub mod open;
-
-#[cfg(feature = "fs")]
-pub mod fs;
-
-#[cfg(feature = "env")]
-pub mod env;
-
-#[cfg(feature = "cpu-info")]
-pub mod cpu_info;
+pub fn read_cpu_info() -> Option<CpuInfo> {
+    None
+}
