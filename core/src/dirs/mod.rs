@@ -197,6 +197,11 @@ mod tests {
     #[test]
     fn api_breakage() {
         let app = App::new("test");
-        let _: Option<PathBuf> = app.get_logs().map(|v| v.create()).unwrap().ok().map(|v| v.into());
+        let _: Option<PathBuf> = app
+            .get_logs()
+            .map(|v| v.create())
+            .unwrap()
+            .ok()
+            .map(|v| v.into());
     }
 }
