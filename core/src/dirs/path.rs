@@ -50,7 +50,7 @@ impl<'a> AppPath<'a> {
     /// # Errors
     ///
     /// This function returns [Error](std::io::Error) if the path couldn't be created.
-    pub fn create(&self) -> Result<&Path> {
+    pub fn create(&self) -> Result<&'a Path> {
         if !self.path.is_dir() {
             std::fs::create_dir_all(self.path)?;
         }

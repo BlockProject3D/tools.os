@@ -180,6 +180,8 @@ impl<'a> Clone for App<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use crate::dirs::App;
 
     fn assert_sync_send<T: Sync + Send>(x: T) -> T {
@@ -190,5 +192,11 @@ mod tests {
     fn test_sync_send() {
         let obj = App::new("test");
         let _ = assert_sync_send(obj);
+    }
+
+    #[test]
+    fn api_breakage() {
+        let app = App::new("test");
+        let _: Option<PathBuf> = app.get_logs().map(|v| v.create()).unwrap().ok().map(|v| v.into());
     }
 }
