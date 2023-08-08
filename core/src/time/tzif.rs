@@ -30,7 +30,7 @@
 //!
 //! **See [RFC](https://www.rfc-editor.org/rfc/rfc8536.html)**
 
-use std::{io::Read, fmt::Display};
+use std::{fmt::Display, io::Read};
 
 /// A series of six-octet records specifying a local time type.
 /// The number of records is specified by the "typecnt" field in the header.
@@ -44,7 +44,7 @@ pub struct LocalTimeTypeRecord {
 
     /// A one-octet unsigned integer specifying a zero-based index into the series of time zone designation octets,
     /// thereby selecting a particular designation string.
-    pub idx: u8
+    pub idx: u8,
 }
 
 /// A series of eight- or twelve-octet records specifying the corrections that need to be applied to UTC in order to determine TAI.
@@ -53,7 +53,7 @@ pub struct LeapSecondRecord {
     pub occurrence: i64,
 
     /// A four-octet signed integer specifying the value of LEAPCORR on or after the occurrence.
-    pub correction: i32
+    pub correction: i32,
 }
 
 /// Possible errors when parsing TZIF.
@@ -63,7 +63,7 @@ pub enum Error {
     Io(std::io::Error),
 
     /// The signature of the file cannot be recognized.
-    InvalidSignature
+    InvalidSignature,
 }
 
 impl Display for Error {
@@ -89,31 +89,31 @@ pub struct Data {
     pub local_time_type_records: Vec<LocalTimeTypeRecord>,
 
     /// A series of eight- or twelve-octet records specifying the corrections that need to be applied to UTC in order to determine TAI.
-    pub leap_second_records: Vec<LeapSecondRecord>
+    pub leap_second_records: Vec<LeapSecondRecord>,
 }
 
 /// TZIF header.
 pub struct Header {
     /// Block version.
-    pub version: u8,  //4
+    pub version: u8, //4
 
     /// A four-octet unsigned integer specifying the number of UT/local indicators contained in the data block -- MUST either be zero or equal to "typecnt".
-    pub isutcnt: u32,  //20..24
+    pub isutcnt: u32, //20..24
 
     /// A four-octet unsigned integer specifying the number of standard/wall indicators contained in the data block -- MUST either be zero or equal to "typecnt".
     pub isstdcnt: u32, //24..28
 
     /// A four-octet unsigned integer specifying the number of leap-second records contained in the data block.
-    pub leapcnt: u32,  //28..32
+    pub leapcnt: u32, //28..32
 
     /// A four-octet unsigned integer specifying the number of transition times contained in the data block.
-    pub timecnt: u32,  //32..36
+    pub timecnt: u32, //32..36
 
     /// A four-octet unsigned integer specifying the number of local time type records contained in the data block -- MUST NOT be zero.
-    pub typecnt: u32,  //36..40
+    pub typecnt: u32, //36..40
 
     /// A four-octet unsigned integer specifying the total number of octets used by the set of time zone designations contained in the data block - MUST NOT be zero.
-    pub charcnt: u32   //40..44
+    pub charcnt: u32, //40..44
 }
 
 /// Combined header and data block.
@@ -124,7 +124,7 @@ pub struct Block {
     pub header: Header,
 
     /// The associated data block.
-    pub data: Data
+    pub data: Data,
 }
 
 /// Simplified TZIF decoded structure.
@@ -133,14 +133,14 @@ pub struct TZIF {
     pub block_v1: Block,
 
     /// The V2+ combined header/data block.
-    pub block_v2p: Option<Block>
+    pub block_v2p: Option<Block>,
 }
 
 impl Header {
     fn time_size(&self) -> usize {
         match self.version {
             0x00 => 4,
-            _ => 8
+            _ => 8,
         }
     }
 
@@ -158,54 +158,87 @@ impl Header {
                 leapcnt: u32::from_be_bytes(header[28..32].try_into().unwrap_unchecked()),
                 timecnt: u32::from_be_bytes(header[32..36].try_into().unwrap_unchecked()),
                 typecnt: u32::from_be_bytes(header[36..40].try_into().unwrap_unchecked()),
-                charcnt: u32::from_be_bytes(header[40..44].try_into().unwrap_unchecked())
+                charcnt: u32::from_be_bytes(header[40..44].try_into().unwrap_unchecked()),
             })
         }
-    }    
+    }
 }
 
 impl Data {
     fn read<R: Read>(mut reader: R, header: &Header) -> Result<Data, Error> {
         let size = header.time_size();
         let mut transition_times = vec![0 as u8; size * header.timecnt as usize];
-        reader.read_exact(&mut transition_times).map_err(Error::Io)?;
+        reader
+            .read_exact(&mut transition_times)
+            .map_err(Error::Io)?;
         let mut transition_types = vec![0 as u8; header.timecnt as usize];
-        reader.read_exact(&mut transition_types).map_err(Error::Io)?;
+        reader
+            .read_exact(&mut transition_types)
+            .map_err(Error::Io)?;
         let mut local_time_type_records = vec![0 as u8; 6 * header.typecnt as usize];
-        reader.read_exact(&mut local_time_type_records).map_err(Error::Io)?;
+        reader
+            .read_exact(&mut local_time_type_records)
+            .map_err(Error::Io)?;
         let mut time_zone_designations = vec![0 as u8; header.charcnt as usize];
-        reader.read_exact(&mut time_zone_designations).map_err(Error::Io)?;
+        reader
+            .read_exact(&mut time_zone_designations)
+            .map_err(Error::Io)?;
         let mut leap_second_records = vec![0 as u8; (size + 4) * header.leapcnt as usize];
-        reader.read_exact(&mut leap_second_records).map_err(Error::Io)?;
+        reader
+            .read_exact(&mut leap_second_records)
+            .map_err(Error::Io)?;
         let mut std_wall_indicators = vec![0 as u8; header.isstdcnt as usize];
-        reader.read_exact(&mut std_wall_indicators).map_err(Error::Io)?;
+        reader
+            .read_exact(&mut std_wall_indicators)
+            .map_err(Error::Io)?;
         let mut ut_indicators = vec![0 as u8; header.isutcnt as usize];
         reader.read_exact(&mut ut_indicators).map_err(Error::Io)?;
         unsafe {
-            let local_time_type_records = local_time_type_records.as_slice().chunks(6).map(|v| LocalTimeTypeRecord {
-                utoff: i32::from_be_bytes(v[0..4].try_into().unwrap_unchecked()),
-                dst: v[4] == 1,
-                idx: v[5]
-            }).collect();
+            let local_time_type_records = local_time_type_records
+                .as_slice()
+                .chunks(6)
+                .map(|v| LocalTimeTypeRecord {
+                    utoff: i32::from_be_bytes(v[0..4].try_into().unwrap_unchecked()),
+                    dst: v[4] == 1,
+                    idx: v[5],
+                })
+                .collect();
             if header.version == 0x00 {
                 Ok(Data {
                     transition_types,
-                    transition_times: transition_times.as_slice().chunks(4).map(|v| i32::from_be_bytes(v.try_into().unwrap_unchecked()) as i64).collect(),
-                    leap_second_records: leap_second_records.as_slice().chunks(8).map(|v| LeapSecondRecord {
-                        occurrence: i32::from_be_bytes(v[0..4].try_into().unwrap_unchecked()) as i64,
-                        correction: i32::from_be_bytes(v[4..8].try_into().unwrap_unchecked()),
-                    }).collect(),
-                    local_time_type_records: local_time_type_records
+                    transition_times: transition_times
+                        .as_slice()
+                        .chunks(4)
+                        .map(|v| i32::from_be_bytes(v.try_into().unwrap_unchecked()) as i64)
+                        .collect(),
+                    leap_second_records: leap_second_records
+                        .as_slice()
+                        .chunks(8)
+                        .map(|v| LeapSecondRecord {
+                            occurrence: i32::from_be_bytes(v[0..4].try_into().unwrap_unchecked())
+                                as i64,
+                            correction: i32::from_be_bytes(v[4..8].try_into().unwrap_unchecked()),
+                        })
+                        .collect(),
+                    local_time_type_records: local_time_type_records,
                 })
             } else {
                 Ok(Data {
                     transition_types,
-                    transition_times: transition_times.as_slice().chunks(8).map(|v| i64::from_be_bytes(v.try_into().unwrap_unchecked())).collect(),
-                    leap_second_records: leap_second_records.as_slice().chunks(12).map(|v| LeapSecondRecord {
-                        occurrence: i64::from_be_bytes(v[0..8].try_into().unwrap_unchecked()),
-                        correction: i32::from_be_bytes(v[8..12].try_into().unwrap_unchecked()),
-                    }).collect(),
-                    local_time_type_records: local_time_type_records
+                    transition_times: transition_times
+                        .as_slice()
+                        .chunks(8)
+                        .map(|v| i64::from_be_bytes(v.try_into().unwrap_unchecked()))
+                        .collect(),
+                    leap_second_records: leap_second_records
+                        .as_slice()
+                        .chunks(12)
+                        .map(|v| LeapSecondRecord {
+                            occurrence: i64::from_be_bytes(v[0..8].try_into().unwrap_unchecked()),
+                            correction: i32::from_be_bytes(v[8..12].try_into().unwrap_unchecked()),
+                        })
+                        .collect(),
+                    local_time_type_records: local_time_type_records,
                 })
             }
         }
@@ -227,20 +260,18 @@ impl TZIF {
         header_v1.version = 0x00; //RFC is badly broken it says bullshit.
         let block_v1 = Block {
             data: Data::read(&mut reader, &header_v1)?,
-            header: header_v1
+            header: header_v1,
         };
         let block_v2p = match Header::read(&mut reader) {
-            Ok(header_v2) => {
-                Some(Block {
-                    data: Data::read(&mut reader, &header_v2)?,
-                    header: header_v2
-                })
-            },
-            _ => None
+            Ok(header_v2) => Some(Block {
+                data: Data::read(&mut reader, &header_v2)?,
+                header: header_v2,
+            }),
+            _ => None,
         };
         Ok(TZIF {
             block_v1,
-            block_v2p 
+            block_v2p,
         })
     }
 }

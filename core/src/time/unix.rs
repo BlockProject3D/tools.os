@@ -48,15 +48,12 @@ pub fn binary_search<F: Fn(usize) -> Ordering>(start: usize, end: usize, cmp: F)
 
 struct Span {
     start: Option<i64>,
-    end: Option<i64>
+    end: Option<i64>,
 }
 
 impl Span {
     pub fn new(start: Option<i64>, end: Option<i64>) -> Span {
-        Span {
-            start,
-            end
-        }
+        Span { start, end }
     }
 
     pub fn cmp(&self, x: i64) -> Ordering {
@@ -69,7 +66,7 @@ impl Span {
             (None, Some(b)) if b <= x => Ordering::Less,
             (None, Some(_)) => Ordering::Equal,
             (None, None) => Ordering::Equal,
-        }    
+        }
     }
 }
 
@@ -101,14 +98,27 @@ pub fn local_offset_at(tm: &OffsetDateTime) -> Option<UtcOffset> {
     let mut utc = tm.unix_timestamp();
     let file = File::open("/etc/localtime").ok()?;
     let data = TZIF::read(file).ok()?;
-    let block = data.block_v2p.map(|v| v.data).unwrap_or_else(|| data.block_v1.data);
+    let block = data
+        .block_v2p
+        .map(|v| v.data)
+        .unwrap_or_else(|| data.block_v1.data);
     //Apply leap second correction if any for the given timestamp
-    if let Some(i) = binary_search(0, block.leap_second_records.len(), |i| Span::from((&*block.leap_second_records, i)).cmp(utc)) {
+    if let Some(i) = binary_search(0, block.leap_second_records.len(), |i| {
+        Span::from((&*block.leap_second_records, i)).cmp(utc)
+    }) {
         utc += block.leap_second_records[i].correction as i64;
     }
-    let i = binary_search(0, block.transition_times.len(), |i| Span::from((&*block.transition_times, i)).cmp(utc))
-        .unwrap_or(0);
-    let offset = UtcOffset::from_whole_seconds(block.local_time_type_records.get(*block.transition_types.get(i)? as usize)?.utoff).ok()?;
+    let i = binary_search(0, block.transition_times.len(), |i| {
+        Span::from((&*block.transition_times, i)).cmp(utc)
+    })
+    .unwrap_or(0);
+    let offset = UtcOffset::from_whole_seconds(
+        block
+            .local_time_type_records
+            .get(*block.transition_types.get(i)? as usize)?
+            .utoff,
+    )
+    .ok()?;
     Some(offset)
 }
 
@@ -129,5 +139,5 @@ mod tests {
             }),
             None
         );
-    }    
+    }
 }

@@ -38,7 +38,7 @@ use time::{OffsetDateTime, UtcOffset};
 use unix as _impl;
 
 mod sealed {
-    use time::{UtcOffset, OffsetDateTime};
+    use time::{OffsetDateTime, UtcOffset};
 
     pub trait SealUO {}
     pub trait SealODT {}
@@ -50,7 +50,7 @@ mod sealed {
 /// Extension trait for a proper current_local_offset over [UtcOffset](time::UtcOffset).
 pub trait LocalUtcOffset: sealed::SealUO {
     /// Attempts to obtain the system’s current UTC offset. If the offset cannot be determined, None is returned.
-    /// 
+    ///
     /// # Platform specific behavior
     ///
     /// - On unix, this reads and decodes the /etc/localtime file.
@@ -61,7 +61,7 @@ pub trait LocalUtcOffset: sealed::SealUO {
 /// Extension trait for a proper now_local over [OffsetDateTime](time::OffsetDateTime).
 pub trait LocalOffsetDateTime: sealed::SealODT {
     /// Attempts to create a new OffsetDateTime with the current date and time in the local offset. If the offset cannot be determined, None is returned.
-    /// 
+    ///
     /// # Platform specific behavior
     ///
     /// - On unix, this reads and decodes the /etc/localtime file.
