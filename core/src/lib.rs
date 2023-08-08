@@ -48,3 +48,6 @@ pub mod env;
 
 #[cfg(feature = "cpu-info")]
 pub mod cpu_info;
+
+#[cfg(feature = "time")]
+pub mod time;
