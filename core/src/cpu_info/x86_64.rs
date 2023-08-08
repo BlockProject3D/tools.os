@@ -32,17 +32,19 @@ use raw_cpuid::CpuId;
 pub fn read_cpu_info() -> Option<CpuInfo> {
     let cpu = CpuId::new();
     let name = cpu.get_processor_brand_string()?;
-    let (cores1, cores2) = cpu.get_cache_parameters()?
-        .map(|v| (v.max_cores_for_package(), v.max_cores_for_cache())).max()?;
+    let (cores1, cores2) = cpu
+        .get_cache_parameters()?
+        .map(|v| (v.max_cores_for_package(), v.max_cores_for_cache()))
+        .max()?;
     if cores1 > 0 {
         Some(CpuInfo {
             name: name.as_str().into(),
-            core_count: cores1 as _
+            core_count: cores1 as _,
         })
     } else {
         Some(CpuInfo {
             name: name.as_str().into(),
-            core_count: cores2 as _
+            core_count: cores2 as _,
         })
     }
 }
