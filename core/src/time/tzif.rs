@@ -167,31 +167,31 @@ impl Header {
 impl Data {
     fn read<R: Read>(mut reader: R, header: &Header) -> Result<Data, Error> {
         let size = header.time_size();
-        let mut transition_times = vec![0 as u8; size * header.timecnt as usize];
+        let mut transition_times = vec![0; size * header.timecnt as usize];
         reader
             .read_exact(&mut transition_times)
             .map_err(Error::Io)?;
-        let mut transition_types = vec![0 as u8; header.timecnt as usize];
+        let mut transition_types = vec![0; header.timecnt as usize];
         reader
             .read_exact(&mut transition_types)
             .map_err(Error::Io)?;
-        let mut local_time_type_records = vec![0 as u8; 6 * header.typecnt as usize];
+        let mut local_time_type_records = vec![0; 6 * header.typecnt as usize];
         reader
             .read_exact(&mut local_time_type_records)
             .map_err(Error::Io)?;
-        let mut time_zone_designations = vec![0 as u8; header.charcnt as usize];
+        let mut time_zone_designations = vec![0; header.charcnt as usize];
         reader
             .read_exact(&mut time_zone_designations)
             .map_err(Error::Io)?;
-        let mut leap_second_records = vec![0 as u8; (size + 4) * header.leapcnt as usize];
+        let mut leap_second_records = vec![0; (size + 4) * header.leapcnt as usize];
         reader
             .read_exact(&mut leap_second_records)
             .map_err(Error::Io)?;
-        let mut std_wall_indicators = vec![0 as u8; header.isstdcnt as usize];
+        let mut std_wall_indicators = vec![0; header.isstdcnt as usize];
         reader
             .read_exact(&mut std_wall_indicators)
             .map_err(Error::Io)?;
-        let mut ut_indicators = vec![0 as u8; header.isutcnt as usize];
+        let mut ut_indicators = vec![0; header.isutcnt as usize];
         reader.read_exact(&mut ut_indicators).map_err(Error::Io)?;
         unsafe {
             let local_time_type_records = local_time_type_records
@@ -220,7 +220,7 @@ impl Data {
                             correction: i32::from_be_bytes(v[4..8].try_into().unwrap_unchecked()),
                         })
                         .collect(),
-                    local_time_type_records: local_time_type_records,
+                    local_time_type_records
                 })
             } else {
                 Ok(Data {
@@ -238,7 +238,7 @@ impl Data {
                             correction: i32::from_be_bytes(v[8..12].try_into().unwrap_unchecked()),
                         })
                         .collect(),
-                    local_time_type_records: local_time_type_records,
+                    local_time_type_records
                 })
             }
         }
