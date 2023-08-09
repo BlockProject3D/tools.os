@@ -33,18 +33,58 @@ pub mod tzif;
 #[cfg(unix)]
 mod unix;
 
-use time::{OffsetDateTime, UtcOffset};
+#[cfg(windows)]
+mod windows;
+
 #[cfg(unix)]
 use unix as _impl;
 
+#[cfg(windows)]
+use windows as _impl;
+
+use time::{OffsetDateTime, UtcOffset, Month};
+
 mod sealed {
-    use time::{OffsetDateTime, UtcOffset};
+    use time::{OffsetDateTime, UtcOffset, Month};
 
     pub trait SealUO {}
     pub trait SealODT {}
+    pub trait SealM {}
 
     impl SealUO for UtcOffset {}
     impl SealODT for OffsetDateTime {}
+    impl SealM for Month {}
+}
+
+/// Extension trait for constructing a [Month](time::Month) from an index.
+pub trait MonthExt: sealed::SealM {
+    /// Constructs a month from its index. Returns None if the index is unknown.
+    /// 
+    /// # Arguments
+    ///
+    /// * `index`: the month index between 1 and 12.
+    ///
+    fn from_index(index: u8) -> Option<Month>;
+}
+
+impl MonthExt for Month {
+    fn from_index(index: u8) -> Option<Month> {
+        match index {
+            1 => Some(Month::January),
+            2 => Some(Month::February),
+            3 => Some(Month::March),
+            4 => Some(Month::April),
+            5 => Some(Month::May),
+            6 => Some(Month::June),
+            7 => Some(Month::July),
+            8 => Some(Month::August),
+            9 => Some(Month::September),
+            10 => Some(Month::October),
+            11 => Some(Month::November),
+            12 => Some(Month::December),
+            _ => None
+        }
+    }
 }
 
 /// Extension trait for a proper current_local_offset over [UtcOffset](time::UtcOffset).

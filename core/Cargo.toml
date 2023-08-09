@@ -28,7 +28,7 @@ objc-foundation = { version = "0.1.1", optional = true }
 
 # Windows
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.42.0", features = ["Win32_UI_Shell", "Win32_Foundation", "Win32_System_Com", "Win32_Storage_FileSystem"], optional = true }
+windows-sys = { version = "0.48.0", features = ["Win32_UI_Shell", "Win32_Foundation", "Win32_System_Com", "Win32_Storage_FileSystem"], optional = true }
 
 # All other unixes except Android and Apple systems
 [target.'cfg(all(unix, not(any(target_vendor = "apple", target_os = "android"))))'.dependencies]
@@ -44,7 +44,7 @@ fs = ["windows-sys"]
 assets = ["libc", "objc", "objc-foundation", "windows-sys/Win32_System_LibraryLoader"]
 env = []
 cpu-info = ["raw-cpuid"]
-time = ["time/std"]
+time = ["time/std", "windows-sys/Win32_System_Time", "windows-sys/Win32_Foundation"]
 
 [package.metadata.docs.rs]
 all-features = true
