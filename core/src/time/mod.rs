@@ -42,10 +42,10 @@ use unix as _impl;
 #[cfg(windows)]
 use windows as _impl;
 
-use time::{OffsetDateTime, UtcOffset, Month};
+use time::{Month, OffsetDateTime, UtcOffset};
 
 mod sealed {
-    use time::{OffsetDateTime, UtcOffset, Month};
+    use time::{Month, OffsetDateTime, UtcOffset};
 
     pub trait SealUO {}
     pub trait SealODT {}
@@ -59,7 +59,7 @@ mod sealed {
 /// Extension trait for constructing a [Month](time::Month) from an index.
 pub trait MonthExt: sealed::SealM {
     /// Constructs a month from its index. Returns None if the index is unknown.
-    /// 
+    ///
     /// # Arguments
     ///
     /// * `index`: the month index between 1 and 12.
@@ -82,7 +82,7 @@ impl MonthExt for Month {
             10 => Some(Month::October),
             11 => Some(Month::November),
             12 => Some(Month::December),
-            _ => None
+            _ => None,
         }
     }
 }

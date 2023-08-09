@@ -28,7 +28,7 @@
 
 use std::mem::MaybeUninit;
 
-use time::{OffsetDateTime, UtcOffset, PrimitiveDateTime, Date, Month, Time};
+use time::{Date, Month, OffsetDateTime, PrimitiveDateTime, Time, UtcOffset};
 use windows_sys::Win32::System::Time::{GetTimeZoneInformation, TIME_ZONE_ID_INVALID};
 
 use crate::time::MonthExt;
@@ -48,24 +48,34 @@ pub fn local_offset_at(tm: &OffsetDateTime) -> Option<UtcOffset> {
                 Date::from_calendar_date(
                     info.StandardDate.wYear as _,
                     Month::from_index(info.StandardDate.wMonth as _).unwrap_unchecked(),
-                    info.StandardDate.wDay as _).unwrap_unchecked(),
+                    info.StandardDate.wDay as _,
+                )
+                .unwrap_unchecked(),
                 Time::from_hms_milli(
                     info.StandardDate.wHour as _,
                     info.StandardDate.wMinute as _,
                     info.StandardDate.wSecond as _,
-                    info.StandardDate.wMilliseconds).unwrap_unchecked()
-            ).assume_offset(tempoffset);
+                    info.StandardDate.wMilliseconds,
+                )
+                .unwrap_unchecked(),
+            )
+            .assume_offset(tempoffset);
             let daylight_date = PrimitiveDateTime::new(
                 Date::from_calendar_date(
                     info.DaylightDate.wYear as _,
                     Month::from_index(info.DaylightDate.wMonth as _).unwrap_unchecked(),
-                    info.DaylightDate.wDay as _).unwrap_unchecked(),
+                    info.DaylightDate.wDay as _,
+                )
+                .unwrap_unchecked(),
                 Time::from_hms_milli(
                     info.DaylightDate.wHour as _,
                     info.DaylightDate.wMinute as _,
                     info.DaylightDate.wSecond as _,
-                    info.DaylightDate.wMilliseconds).unwrap_unchecked()
-            ).assume_offset(tempoffset);
+                    info.DaylightDate.wMilliseconds,
+                )
+                .unwrap_unchecked(),
+            )
+            .assume_offset(tempoffset);
             if tm > &standard_date {
                 offset += info.StandardBias * 60;
             }
