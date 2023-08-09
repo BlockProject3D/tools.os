@@ -29,7 +29,10 @@
 use std::mem::MaybeUninit;
 
 use time::{OffsetDateTime, UtcOffset};
-use windows_sys::Win32::System::{Time::GetTimeZoneInformation, SystemServices::{TIME_ZONE_ID_UNKNOWN, TIME_ZONE_ID_DAYLIGHT, TIME_ZONE_ID_STANDARD}};
+use windows_sys::Win32::System::{
+    SystemServices::{TIME_ZONE_ID_DAYLIGHT, TIME_ZONE_ID_STANDARD, TIME_ZONE_ID_UNKNOWN},
+    Time::GetTimeZoneInformation,
+};
 
 pub fn local_offset_at(_: &OffsetDateTime) -> Option<UtcOffset> {
     let mut info = MaybeUninit::uninit();
@@ -40,12 +43,12 @@ pub fn local_offset_at(_: &OffsetDateTime) -> Option<UtcOffset> {
             TIME_ZONE_ID_DAYLIGHT => {
                 let info = info.assume_init();
                 info.Bias + info.DaylightBias
-            },
+            }
             TIME_ZONE_ID_STANDARD => {
                 let info = info.assume_init();
                 info.Bias + info.StandardBias
             }
-            _ => return None
+            _ => return None,
         };
         UtcOffset::from_whole_seconds(offset * -60).ok()
     }
