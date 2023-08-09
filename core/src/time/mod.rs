@@ -122,3 +122,24 @@ impl LocalOffsetDateTime for OffsetDateTime {
         Some(tm.to_offset(offset))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use time::{OffsetDateTime, UtcOffset};
+
+    use crate::time::LocalUtcOffset;
+
+    use super::LocalOffsetDateTime;
+
+    #[test]
+    fn current_offset() {
+        let offset = UtcOffset::current_local_offset();
+        println!("Offset: {:?}", offset)
+    }
+
+    #[test]
+    fn now_local() {
+        let date = OffsetDateTime::now_local();
+        println!("Date: {:?}", date)
+    }
+}
