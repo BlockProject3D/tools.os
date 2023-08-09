@@ -71,3 +71,39 @@ of interacting with the platform (No native C API, everything goes through JVM w
 | Linux                    | Yes    | Uses dbus and xdg-open.      |
 | Windows                  | Yes    | Uses ShellExecuteW.          |
 | Other BSD like systems   | No     | Uses the same code as Linux. |
+
+### Support for the *env* feature
+
+No platform specific APIs are required for this feature except support for
+environment variables which is usually missing from mobile platforms.
+
+| Platform                 | Tested | Notes          |
+|--------------------------|--------|----------------|
+| macOS                    | Yes    | -              |
+| macOS (with app sandbox) | Yes    | -              |
+| iOS                      | No     | Not applicable |
+| Linux                    | Yes    | -              |
+| Windows                  | Yes    | -              |
+| Other BSD like systems   | No     | -              |
+
+### Support for the *cpu-info* feature
+
+| Platform                 | Tested | Notes                                                         |
+|--------------------------|--------|---------------------------------------------------------------|
+| macOS                    | Yes    | Uses `machdep.cpu.core_count` and `machdep.cpu.brand_string`. |
+| macOS (with app sandbox) | Yes    | Same as macOS.                                                |
+| iOS                      | Yes    | Same as macOS.                                                |
+| Linux                    | Yes    | Uses `raw_cpuid` on x86_64, None on other architectures.      |
+| Windows                  | Yes    | Uses `raw_cpuid` on x86_64, None on other architectures.      |
+| Other BSD like systems   | Yes    | Uses `hw.ncpu` and `hw.model`.                                |
+
+### Support for the *time* feature
+
+| Platform                 | Tested | Notes                                                  |
+|--------------------------|--------|--------------------------------------------------------|
+| macOS                    | Yes    | Reads and interprets the contents of `/etc/localtime`. |
+| macOS (with app sandbox) | No     | Same as macOS.                                         |
+| iOS                      | Yes    | Same as macOS.                                         |
+| Linux                    | No     | Same as macOS.                                         |
+| Windows                  | Yes    | Uses `GetTimeZoneInformation`.                         |
+| Other BSD like systems   | No     | Same as macOS.                                         |
