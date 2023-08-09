@@ -37,7 +37,9 @@ pub fn local_offset_at(tm: &OffsetDateTime) -> Option<UtcOffset> {
     let mut info = MaybeUninit::uninit();
     unsafe {
         let res = GetTimeZoneInformation(info.as_mut_ptr());
-        if res == TIME_ZONE_ID_INVALID {
+        println!("{}", res);
+        None
+        /*if res == TIME_ZONE_ID_INVALID {
             None
         } else {
             let info = info.assume_init();
@@ -83,6 +85,6 @@ pub fn local_offset_at(tm: &OffsetDateTime) -> Option<UtcOffset> {
                 offset += info.DaylightBias * 60;
             }
             UtcOffset::from_whole_seconds(-offset).ok()
-        }
+        }*/
     }
 }

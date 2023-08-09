@@ -139,7 +139,7 @@ mod tests {
 
     #[test]
     fn now_local() {
-        //let date = OffsetDateTime::now_local();
-        //println!("Date: {:?}", date)
+        let date = OffsetDateTime::now_local();
+        println!("Date: {:?}", date)
     }
 }
