@@ -28,63 +28,25 @@
 
 use std::mem::MaybeUninit;
 
-use time::{Date, Month, OffsetDateTime, PrimitiveDateTime, Time, UtcOffset};
-use windows_sys::Win32::System::Time::{GetTimeZoneInformation, TIME_ZONE_ID_INVALID};
+use time::{OffsetDateTime, UtcOffset};
+use windows_sys::Win32::System::{Time::GetTimeZoneInformation, SystemServices::{TIME_ZONE_ID_UNKNOWN, TIME_ZONE_ID_DAYLIGHT, TIME_ZONE_ID_STANDARD}};
 
-use crate::time::MonthExt;
-
-pub fn local_offset_at(tm: &OffsetDateTime) -> Option<UtcOffset> {
+pub fn local_offset_at(_: &OffsetDateTime) -> Option<UtcOffset> {
     let mut info = MaybeUninit::uninit();
     unsafe {
         let res = GetTimeZoneInformation(info.as_mut_ptr());
-        println!("{}", res);
-        None
-        /*if res == TIME_ZONE_ID_INVALID {
-            None
-        } else {
-            let info = info.assume_init();
-            //Windows works at inverse instead of storing propely the bias based on UTC time it stores the bias based on local time.
-            let mut offset = info.Bias * 60;
-            let tempoffset = UtcOffset::from_whole_seconds(offset).ok()?;
-            let standard_date = PrimitiveDateTime::new(
-                Date::from_calendar_date(
-                    info.StandardDate.wYear as _,
-                    Month::from_index(info.StandardDate.wMonth as _).unwrap_unchecked(),
-                    info.StandardDate.wDay as _,
-                )
-                .unwrap_unchecked(),
-                Time::from_hms_milli(
-                    info.StandardDate.wHour as _,
-                    info.StandardDate.wMinute as _,
-                    info.StandardDate.wSecond as _,
-                    info.StandardDate.wMilliseconds,
-                )
-                .unwrap_unchecked(),
-            )
-            .assume_offset(tempoffset);
-            let daylight_date = PrimitiveDateTime::new(
-                Date::from_calendar_date(
-                    info.DaylightDate.wYear as _,
-                    Month::from_index(info.DaylightDate.wMonth as _).unwrap_unchecked(),
-                    info.DaylightDate.wDay as _,
-                )
-                .unwrap_unchecked(),
-                Time::from_hms_milli(
-                    info.DaylightDate.wHour as _,
-                    info.DaylightDate.wMinute as _,
-                    info.DaylightDate.wSecond as _,
-                    info.DaylightDate.wMilliseconds,
-                )
-                .unwrap_unchecked(),
-            )
-            .assume_offset(tempoffset);
-            if tm > &standard_date {
-                offset += info.StandardBias * 60;
+        let offset = match res {
+            TIME_ZONE_ID_UNKNOWN => info.assume_init().Bias,
+            TIME_ZONE_ID_DAYLIGHT => {
+                let info = info.assume_init();
+                info.Bias + info.DaylightBias
+            },
+            TIME_ZONE_ID_STANDARD => {
+                let info = info.assume_init();
+                info.Bias + info.StandardBias
             }
-            if tm > &daylight_date {
-                offset += info.DaylightBias * 60;
-            }
-            UtcOffset::from_whole_seconds(-offset).ok()
-        }*/
+            _ => return None
+        };
+        UtcOffset::from_whole_seconds(offset * -60).ok()
     }
 }
