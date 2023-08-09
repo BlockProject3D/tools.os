@@ -220,7 +220,7 @@ impl Data {
                             correction: i32::from_be_bytes(v[4..8].try_into().unwrap_unchecked()),
                         })
                         .collect(),
-                    local_time_type_records
+                    local_time_type_records,
                 })
             } else {
                 Ok(Data {
@@ -238,7 +238,7 @@ impl Data {
                             correction: i32::from_be_bytes(v[8..12].try_into().unwrap_unchecked()),
                         })
                         .collect(),
-                    local_time_type_records
+                    local_time_type_records,
                 })
             }
         }
