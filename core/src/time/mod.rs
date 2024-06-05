@@ -28,8 +28,6 @@
 
 //! OS local date/time extensions for time-rs.
 
-pub mod tzif;
-
 #[cfg(unix)]
 mod unix;
 

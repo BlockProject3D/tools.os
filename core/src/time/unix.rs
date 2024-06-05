@@ -30,7 +30,7 @@ use std::{cmp::Ordering, fs::File};
 
 use time::{OffsetDateTime, UtcOffset};
 
-use super::tzif::{LeapSecondRecord, TZIF};
+use bp3d_util::tzif::{LeapSecondRecord, TZIF};
 
 //Imported from https://github.com/Yuri6037/time-tz/blob/master/src/binary_search.rs
 pub fn binary_search<F: Fn(usize) -> Ordering>(start: usize, end: usize, cmp: F) -> Option<usize> {
