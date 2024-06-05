@@ -28,7 +28,7 @@
 
 use bp3d_os::assets;
 use bp3d_os::open;
-use bp3d_os::{fs, fs::PathExt};
+use bp3d_os::fs;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
@@ -75,9 +75,9 @@ fn main() {
         "open::show_in_files(Path)",
     );
     let test_path = Path::new("./Cargo.lock");
-    assert!(!test_path.is_hidden());
+    assert!(!fs::is_hidden(test_path));
     let test_path = fs::hide(test_path).expect("Failed to hide test file (Cargo.lock)");
-    assert!(test_path.is_hidden());
+    assert!(fs::is_hidden(&test_path));
     assert_open_no_error_ignore_unsupported(open::open(test_path.parent().unwrap()));
     ensure_yes(
         "Is Cargo.lock now invisible from the file explorer?",

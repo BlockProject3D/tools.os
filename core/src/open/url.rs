@@ -26,7 +26,6 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::fs::PathExt;
 use std::convert::TryFrom;
 use std::error::Error;
 use std::ffi::{OsStr, OsString};
@@ -105,7 +104,7 @@ impl<'a> Url<'a> {
         if self.is_path() {
             let path = Path::new(self.path);
             if !path.is_absolute() {
-                let path = path.get_absolute()?;
+                let path = crate::fs::get_absolute_path(path)?;
                 s.push(path);
             } else {
                 s.push(path);

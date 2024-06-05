@@ -26,7 +26,6 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::fs::PathExt;
 use crate::open::{Error, Result, Url};
 use objc::class;
 use objc::msg_send;
@@ -78,7 +77,7 @@ pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> Result {
             return Err(Error::Other("current thread is not the main thread".into()));
         }
     }
-    let v: std::io::Result<Vec<*mut Object>> = iter.map(|v| v.get_absolute().map(|v| {
+    let v: std::io::Result<Vec<*mut Object>> = iter.map(|v| crate::fs::get_absolute_path(v).map(|v| {
         unsafe {
             let mut str: *mut Object = msg_send![nsstring, alloc];
             str = msg_send![str, initWithBytes: v.as_os_str().as_bytes().as_ptr() length: v.as_os_str().len() as c_ulong encoding: NS_UTF8_STRING_ENCODING];
