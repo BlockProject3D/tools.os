@@ -44,7 +44,7 @@ pub mod system;
 /// The system may also include specific configuration to break applications on purpose,
 /// in which case these APIs will also fail.
 ///
-/// These APIs do not automatically create the directories, instead they return a matching instance of [AppPath](self::path::AppPath).
+/// These APIs do not automatically create the directories, instead they return a matching instance of [AppPath](AppPath).
 pub struct App<'a> {
     name: &'a str,
     data: OnceCell<PathBuf>,
@@ -95,7 +95,7 @@ impl<'a> App<'a> {
     pub fn get_cache(&self) -> Option<AppPath> {
         self.cache
             .get_or_try_init(|| {
-                system::get_app_cache()
+                system::get_app_cache().map(|v| v.join(self.name))
                     .or_else(|| self.get_data().map(|v| v.join("Cache")))
                     .ok_or(())
             })
@@ -136,7 +136,7 @@ impl<'a> App<'a> {
         // the app's public documents.
         self.logs
             .get_or_try_init(|| {
-                system::get_app_logs()
+                system::get_app_logs().map(|v| v.join(self.name))
                     .or_else(|| self.get_documents().map(|v| v.join("Logs")))
                     .ok_or(())
             })
@@ -155,7 +155,7 @@ impl<'a> App<'a> {
     pub fn get_config(&self) -> Option<AppPath> {
         self.config
             .get_or_try_init(|| {
-                system::get_app_config()
+                system::get_app_config().map(|v| v.join(self.name))
                     .or_else(|| self.get_data().map(|v| v.join("Config")))
                     .ok_or(())
             })
