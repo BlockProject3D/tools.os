@@ -94,6 +94,16 @@ pub trait LocalUtcOffset: sealed::SealUO {
     /// - On unix, this reads and decodes the /etc/localtime file.
     /// - On windows, this calls [GetTimeZoneInformation](https://learn.microsoft.com/en-us/windows/win32/api/timezoneapi/nf-timezoneapi-gettimezoneinformation) and reads the **Bias** field of the structure.
     fn current_local_offset() -> Option<UtcOffset>;
+
+    /// Attempts to obtain the system’s UTC offset for the given UTC [OffsetDateTime](OffsetDateTime). If the offset cannot be determined, None is returned.
+    ///
+    /// This searches for a matching offset in UTC time for the given input datetime.
+    ///
+    /// # Platform specific behavior
+    ///
+    /// - On unix, this reads and decodes the /etc/localtime file.
+    /// - On windows, this calls [GetTimeZoneInformation](https://learn.microsoft.com/en-us/windows/win32/api/timezoneapi/nf-timezoneapi-gettimezoneinformation) and reads the **Bias** field of the structure.
+    fn local_offset_at(datetime: OffsetDateTime) -> Option<UtcOffset>;
 }
 
 /// Extension trait for a proper now_local over [OffsetDateTime](time::OffsetDateTime).
@@ -108,8 +118,14 @@ pub trait LocalOffsetDateTime: sealed::SealODT {
 }
 
 impl LocalUtcOffset for UtcOffset {
+    #[inline]
     fn current_local_offset() -> Option<UtcOffset> {
         _impl::local_offset_at(&OffsetDateTime::now_utc())
+    }
+
+    #[inline]
+    fn local_offset_at(datetime: OffsetDateTime) -> Option<UtcOffset> {
+        _impl::local_offset_at(&datetime)
     }
 }
 

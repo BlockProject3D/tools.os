@@ -1,6 +1,6 @@
 [package]
 name = "bp3d-os"
-version = "1.0.0-rc.2.0.0"
+version = "1.0.0-rc.3.0.0"
 authors = ["Yuri Edward <yuri6037@outlook.com>"]
 edition = "2021"
 description = "Operating System tools designed for BlockProject3D"
@@ -19,9 +19,6 @@ once_cell = {version = "1.17.0", optional = true }
 time = { version = "0.3.25", optional = true }
 
 # Apple and BSD
-[target.'cfg(any(target_os = "freebsd", target_vendor = "apple"))'.dependencies]
-libc = { version = "0.2", optional = true }
-
 [target.'cfg(target_vendor = "apple")'.dependencies]
 objc = { version = "0.2.7", optional = true }
 objc-foundation = { version = "0.1.1", optional = true }
@@ -37,8 +34,10 @@ zbus = { version = "3.7.0", optional = true }
 [target.'cfg(all(not(any(target_vendor = "apple", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd")), any(target_arch = "x86", target_arch = "x86_64")))'.dependencies]
 raw-cpuid = { version = "11.0.1", optional = true }
 
+# Any unix system including Apple and BSD
 [target.'cfg(unix)'.dependencies]
 bp3d-util = { version = "1.0.0-rc.1.0.0", path = "../../tools.util", features = [], optional = true }
+libc = { version = "0.2", optional = true }
 
 [features]
 dirs = ["once_cell", "objc", "objc-foundation", "windows-sys/Win32_UI_Shell", "windows-sys/Win32_Foundation", "windows-sys/Win32_System_Com"]
@@ -47,7 +46,7 @@ fs = ["windows-sys/Win32_Storage_FileSystem", "windows-sys/Win32_Foundation"]
 assets = ["libc", "objc", "objc-foundation", "windows-sys/Win32_System_LibraryLoader", "windows-sys/Win32_Foundation"]
 env = []
 cpu-info = ["raw-cpuid"]
-time = ["time/std", "windows-sys/Win32_System_Time", "windows-sys/Win32_Foundation", "windows-sys/Win32_System_SystemServices", "bp3d-util/tzif"]
+time = ["time/std", "libc", "windows-sys/Win32_System_Time", "windows-sys/Win32_Foundation", "windows-sys/Win32_System_SystemServices", "bp3d-util/tzif"]
 
 [package.metadata.docs.rs]
 all-features = true
