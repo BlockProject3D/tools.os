@@ -31,9 +31,9 @@
 #[cfg(unix)]
 mod unix;
 
+mod instant;
 #[cfg(windows)]
 mod windows;
-mod instant;
 
 #[cfg(unix)]
 use unix as _impl;

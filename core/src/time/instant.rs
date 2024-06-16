@@ -26,8 +26,8 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use libc::{clock_gettime, timespec, CLOCK_MONOTONIC};
 use std::mem::MaybeUninit;
-use libc::{clock_gettime, CLOCK_MONOTONIC, timespec};
 
 #[cfg(unix)]
 pub struct Instant(timespec);
@@ -35,14 +35,12 @@ pub struct Instant(timespec);
 #[cfg(windows)]
 pub struct Instant {
     performance_counter: i64,
-    frequency: i64
+    frequency: i64,
 }
 
 impl Instant {
     #[cfg(windows)]
-    pub fn now() -> Self {
-        
-    }
+    pub fn now() -> Self {}
 
     #[cfg(unix)]
     pub fn now() -> Self {
@@ -56,5 +54,4 @@ impl Instant {
             }
         }
     }
-
 }
