@@ -27,8 +27,8 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use bp3d_os::assets;
-use bp3d_os::open;
 use bp3d_os::fs;
+use bp3d_os::open;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 
