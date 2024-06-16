@@ -26,20 +26,19 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::fs::PathExt;
 use crate::open::{Error, Result, Url};
 use std::os::windows::ffi::OsStrExt;
 use std::path::Path;
 use windows_sys::core::PCWSTR;
 use windows_sys::Win32::UI::Shell::ShellExecuteW;
 use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOW;
+use crate::fs::get_absolute_path;
 
 pub fn open(url: &Url) -> Result {
     unsafe {
         let operation = ['o' as u16, 'p' as u16, 'e' as u16, 'n' as u16, 0x0000];
         let mut urlw: Vec<u16> = match url.is_path() {
-            true => Path::new(url.path())
-                .get_absolute()
+            true => get_absolute_path(Path::new(url.path()))
                 .map_err(Error::Io)?
                 .as_os_str()
                 .encode_wide()

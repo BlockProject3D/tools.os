@@ -26,12 +26,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::fs::PathExt;
 use crate::open::{Error, Result as OpenResult, Url};
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::process::Command;
 use zbus::{blocking::Connection, dbus_proxy, Result};
+use crate::fs::get_absolute_path;
 
 #[dbus_proxy(
     default_service = "org.freedesktop.FileManager1",
@@ -87,7 +87,7 @@ pub fn open(url: &Url) -> OpenResult {
 pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> OpenResult {
     let v: std::io::Result<Vec<OsString>> = iter
         .map(|v| {
-            v.get_absolute().map(|v| {
+            get_absolute_path(v).map(|v| {
                 let mut s = OsString::with_capacity(v.as_os_str().len() + 7);
                 s.push("file://");
                 s.push(v.as_os_str());
