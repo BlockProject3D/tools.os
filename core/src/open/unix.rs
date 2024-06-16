@@ -26,12 +26,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::fs::get_absolute_path;
 use crate::open::{Error, Result as OpenResult, Url};
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::process::Command;
 use zbus::{blocking::Connection, dbus_proxy, Result};
-use crate::fs::get_absolute_path;
 
 #[dbus_proxy(
     default_service = "org.freedesktop.FileManager1",

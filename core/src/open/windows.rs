@@ -26,13 +26,13 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::fs::get_absolute_path;
 use crate::open::{Error, Result, Url};
 use std::os::windows::ffi::OsStrExt;
 use std::path::Path;
 use windows_sys::core::PCWSTR;
 use windows_sys::Win32::UI::Shell::ShellExecuteW;
 use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOW;
-use crate::fs::get_absolute_path;
 
 pub fn open(url: &Url) -> Result {
     unsafe {
