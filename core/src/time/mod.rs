@@ -31,7 +31,6 @@
 #[cfg(unix)]
 mod unix;
 
-mod instant;
 #[cfg(windows)]
 mod windows;
 
