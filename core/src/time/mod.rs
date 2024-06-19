@@ -33,7 +33,6 @@ mod unix;
 
 #[cfg(windows)]
 mod windows;
-mod instant;
 
 #[cfg(unix)]
 use unix as _impl;
