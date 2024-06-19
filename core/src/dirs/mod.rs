@@ -28,13 +28,35 @@
 
 //! This module provides cross-platform functions to get various system paths.
 
-use once_cell::sync::OnceCell;
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
 pub use self::path::AppPath;
 
 mod path;
 pub mod system;
+
+//TODO: Remove once once_cell_try feature is stabilized.
+mod sealing {
+    use std::sync::OnceLock;
+
+    pub trait CellExt<T> {
+        fn get_or_try_set<E>(&self, f: impl Fn() -> Result<T, E>) -> Result<&T, E>;
+    }
+
+    impl<T> CellExt<T> for OnceLock<T> {
+        fn get_or_try_set<E>(&self, f: impl Fn() -> Result<T, E>) -> Result<&T, E> {
+            if let Some(value) = self.get() {
+                Ok(value)
+            } else {
+                let value = f()?;
+                Ok(self.get_or_init(|| value))
+            }
+        }
+    }
+}
+
+use sealing::CellExt;
 
 /// Represents the application's directories.
 ///
@@ -47,11 +69,11 @@ pub mod system;
 /// These APIs do not automatically create the directories, instead they return a matching instance of [AppPath](AppPath).
 pub struct App<'a> {
     name: &'a str,
-    data: OnceCell<PathBuf>,
-    cache: OnceCell<PathBuf>,
-    docs: OnceCell<PathBuf>,
-    logs: OnceCell<PathBuf>,
-    config: OnceCell<PathBuf>,
+    data: OnceLock<PathBuf>,
+    cache: OnceLock<PathBuf>,
+    docs: OnceLock<PathBuf>,
+    logs: OnceLock<PathBuf>,
+    config: OnceLock<PathBuf>,
 }
 
 impl<'a> App<'a> {
@@ -65,11 +87,11 @@ impl<'a> App<'a> {
     pub fn new(name: &'a str) -> App<'a> {
         App {
             name,
-            data: OnceCell::new(),
-            cache: OnceCell::new(),
-            docs: OnceCell::new(),
-            logs: OnceCell::new(),
-            config: OnceCell::new(),
+            data: OnceLock::new(),
+            cache: OnceLock::new(),
+            docs: OnceLock::new(),
+            logs: OnceLock::new(),
+            config: OnceLock::new(),
         }
     }
 
@@ -80,7 +102,7 @@ impl<'a> App<'a> {
     /// never occur on any supported system except if such system is broken.
     pub fn get_data(&self) -> Option<AppPath> {
         self.data
-            .get_or_try_init(|| system::get_app_data().ok_or(()).map(|v| v.join(self.name)))
+            .get_or_try_set(|| system::get_app_data().ok_or(()).map(|v| v.join(self.name)))
             .ok()
             .map(|v| v.as_ref())
             .map(AppPath::new)
@@ -94,7 +116,7 @@ impl<'a> App<'a> {
     /// falls back to [get_data](App::get_data)/Cache.
     pub fn get_cache(&self) -> Option<AppPath> {
         self.cache
-            .get_or_try_init(|| {
+            .get_or_try_set(|| {
                 system::get_app_cache()
                     .map(|v| v.join(self.name))
                     .or_else(|| self.get_data().map(|v| v.join("Cache")))
@@ -116,7 +138,7 @@ impl<'a> App<'a> {
         // where the app has it's own public documents folder, otherwise
         // create a "public" Documents directory inside the application's data directory.
         self.docs
-            .get_or_try_init(|| {
+            .get_or_try_set(|| {
                 system::get_app_documents()
                     .or_else(|| self.get_data().map(|v| v.join("Documents")))
                     .ok_or(())
@@ -136,7 +158,7 @@ impl<'a> App<'a> {
         // Logs should be public and not contain any sensitive information, so store that in
         // the app's public documents.
         self.logs
-            .get_or_try_init(|| {
+            .get_or_try_set(|| {
                 system::get_app_logs()
                     .map(|v| v.join(self.name))
                     .or_else(|| self.get_documents().map(|v| v.join("Logs")))
@@ -156,7 +178,7 @@ impl<'a> App<'a> {
     /// falls back to [get_data](App::get_data)/Config.
     pub fn get_config(&self) -> Option<AppPath> {
         self.config
-            .get_or_try_init(|| {
+            .get_or_try_set(|| {
                 system::get_app_config()
                     .map(|v| v.join(self.name))
                     .or_else(|| self.get_data().map(|v| v.join("Config")))
