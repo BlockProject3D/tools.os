@@ -1,6 +1,6 @@
 [package]
 name = "bp3d-os"
-version = "1.0.0-rc.3.0.3"
+version = "1.0.0-rc.4.0.0"
 authors = ["Yuri Edward <yuri6037@outlook.com>"]
 edition = "2021"
 description = "Operating System tools designed for BlockProject3D"
@@ -44,7 +44,6 @@ dirs = ["objc", "objc-foundation", "windows-sys/Win32_UI_Shell", "windows-sys/Wi
 open = ["fs", "zbus", "windows-sys/Win32_UI_Shell", "windows-sys/Win32_Foundation", "windows-sys/Win32_UI_WindowsAndMessaging", "objc"]
 fs = ["windows-sys/Win32_Storage_FileSystem", "windows-sys/Win32_Foundation"]
 assets = ["libc", "objc", "objc-foundation", "windows-sys/Win32_System_LibraryLoader", "windows-sys/Win32_Foundation"]
-env = []
 cpu-info = ["raw-cpuid"]
 time = ["time/std", "windows-sys/Win32_System_Time", "windows-sys/Win32_Foundation", "windows-sys/Win32_System_SystemServices", "bp3d-util/tzif"]
 
