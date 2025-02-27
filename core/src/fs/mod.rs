@@ -163,3 +163,89 @@ pub fn hide<T: AsRef<std::path::Path>>(path: T) -> std::io::Result<PathUpdate<T>
 pub fn show<T: AsRef<std::path::Path>>(path: T) -> std::io::Result<PathUpdate<T>> {
     _impl::show(path)
 }
+
+/// Copy options.
+#[derive(Default)]
+pub struct CopyOptions<'a> {
+    overwrite: bool,
+    excludes: Vec<&'a std::ffi::OsStr>
+}
+
+impl<'a> CopyOptions<'a> {
+    /// Creates a new default filled instance of [CopyOptions].
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Sets whether overwriting existing files is accepted.
+    /// The default is to not allow overwriting files.
+    ///
+    /// # Arguments
+    ///
+    /// * `overwrite`: true to allow overwriting files, false otherwise.
+    ///
+    /// returns: &mut CopyOptions
+    pub fn overwrite(&mut self, overwrite: bool) -> &mut Self {
+        self.overwrite = overwrite;
+        self
+    }
+
+    /// Adds a file name or folder name to be excluded from the copy operation.
+    ///
+    /// # Arguments
+    ///
+    /// * `name`: the file or folder name to exclude.
+    ///
+    /// returns: &mut CopyOptions
+    pub fn exclude(&mut self, name: &'a std::ffi::OsStr) -> &mut Self {
+        self.excludes.push(name);
+        self
+    }
+}
+
+/// Copy a file or a folder.
+///
+/// # Usage
+///
+/// | src  |  dst | result                                         |
+/// | ---- | ---- | ---------------------------------------------- |
+/// | file | file | copy src into dst using [copy](std::fs::copy). |
+/// | file | dir  | copy src into dst/file_name.                   |
+/// | dir  | file | error.                                         |
+/// | dir  | dir  | deep copy of the content of src into dst.      |
+///
+/// # Arguments
+///
+/// * `src`:
+/// * `dst`:
+///
+/// returns: Result<(), Error>
+pub fn copy<'a>(src: &std::path::Path, dst: &std::path::Path, options: impl std::borrow::Borrow<CopyOptions<'a>>) -> std::io::Result<()> {
+    let options = options.borrow();
+    if src.file_name().map(|v| options.excludes.contains(&v)).unwrap_or(false) {
+        // No error but file is to be excluded so don't copy.
+        return Ok(());
+    }
+    if src.is_file() {
+        if dst.is_dir() {
+            let name = src.file_name().ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid source file"))?;
+            return copy(src, &dst.join(name), options);
+        } else {
+            if !options.overwrite {
+                return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, "overwriting files is not allowed"))
+            }
+            return std::fs::copy(src, dst).map(|_| ());
+        }
+    }
+    if dst.is_file() {
+        return Err(std::io::Error::new(std::io::ErrorKind::NotADirectory, "a directory is needed to copy a directory"));
+    }
+    if !dst.exists() {
+        std::fs::create_dir(dst)?;
+    }
+    for v in std::fs::read_dir(src)? {
+        let entry = v?;
+        copy(&entry.path(), &dst.join(entry.file_name()), options)?;
+    }
+    Ok(())
+}
