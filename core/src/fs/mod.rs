@@ -231,7 +231,7 @@ pub fn copy<'a>(src: &std::path::Path, dst: &std::path::Path, options: impl std:
             let name = src.file_name().ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid source file"))?;
             return copy(src, &dst.join(name), options);
         } else {
-            if !options.overwrite {
+            if dst.is_file() && !options.overwrite {
                 return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, "overwriting files is not allowed"))
             }
             return std::fs::copy(src, dst).map(|_| ());
