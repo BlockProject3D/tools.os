@@ -1,4 +1,4 @@
-// Copyright (c) 2023, BlockProject 3D
+// Copyright (c) 2025, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -41,7 +41,7 @@ impl<'a> AsRef<Path> for AppPath<'a> {
 }
 
 impl<'a> AppPath<'a> {
-    pub(crate) fn new(path: &'a Path) -> AppPath {
+    pub(crate) fn new(path: &'a Path) -> Self {
         AppPath { path }
     }
 
