@@ -15,10 +15,10 @@ categories = ["os"]
 [dependencies]
 
 # Normal dependencies
-time = { version = "0.3.25", optional = true }
+time = { version = "0.3.37", optional = true }
 
 # Apple and BSD
-[target.'cfg(any(target_os = "freebsd", target_vendor = "apple"))'.dependencies]
+[target.'cfg(not(windows))'.dependencies]
 libc = { version = "0.2", optional = true }
 
 [target.'cfg(target_vendor = "apple")'.dependencies]
@@ -45,7 +45,7 @@ open = ["fs", "zbus", "windows-sys/Win32_UI_Shell", "windows-sys/Win32_Foundatio
 fs = ["windows-sys/Win32_Storage_FileSystem", "windows-sys/Win32_Foundation"]
 assets = ["libc", "objc", "objc-foundation", "windows-sys/Win32_System_LibraryLoader", "windows-sys/Win32_Foundation"]
 cpu-info = ["raw-cpuid"]
-time = ["time/std", "windows-sys/Win32_System_Time", "windows-sys/Win32_Foundation", "windows-sys/Win32_System_SystemServices", "bp3d-util/tzif"]
+time = ["time/std", "windows-sys/Win32_System_Time", "windows-sys/Win32_Foundation", "windows-sys/Win32_System_SystemServices", "bp3d-util/tzif", "libc"]
 
 [package.metadata.docs.rs]
 all-features = true

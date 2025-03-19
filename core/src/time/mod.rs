@@ -1,4 +1,4 @@
-// Copyright (c) 2023, BlockProject 3D
+// Copyright (c) 2025, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -33,7 +33,9 @@ mod unix;
 
 #[cfg(windows)]
 mod windows;
+mod instant;
 
+use std::time::Duration;
 #[cfg(unix)]
 use unix as _impl;
 
@@ -43,18 +45,23 @@ use windows as _impl;
 use time::{Month, OffsetDateTime, UtcOffset};
 
 mod sealed {
+    use std::time::Duration;
     use time::{Month, OffsetDateTime, UtcOffset};
 
     pub trait SealUO {}
     pub trait SealODT {}
     pub trait SealM {}
 
+    pub trait SealD {}
+
     impl SealUO for UtcOffset {}
     impl SealODT for OffsetDateTime {}
     impl SealM for Month {}
+
+    impl SealD for Duration {}
 }
 
-/// Extension trait for constructing a [Month](time::Month) from an index.
+/// Extension trait for constructing a [Month](Month) from an index.
 pub trait MonthExt: sealed::SealM {
     /// Constructs a month from its index. Returns None if the index is unknown.
     ///
@@ -85,7 +92,7 @@ impl MonthExt for Month {
     }
 }
 
-/// Extension trait for a proper current_local_offset over [UtcOffset](time::UtcOffset).
+/// Extension trait for a proper current_local_offset over [UtcOffset](UtcOffset).
 pub trait LocalUtcOffset: sealed::SealUO {
     /// Attempts to obtain the system’s current UTC offset. If the offset cannot be determined, None is returned.
     ///
@@ -106,7 +113,7 @@ pub trait LocalUtcOffset: sealed::SealUO {
     fn local_offset_at(datetime: OffsetDateTime) -> Option<UtcOffset>;
 }
 
-/// Extension trait for a proper now_local over [OffsetDateTime](time::OffsetDateTime).
+/// Extension trait for a proper now_local over [OffsetDateTime](OffsetDateTime).
 pub trait LocalOffsetDateTime: sealed::SealODT {
     /// Attempts to create a new OffsetDateTime with the current date and time in the local offset. If the offset cannot be determined, None is returned.
     ///
@@ -137,11 +144,65 @@ impl LocalOffsetDateTime for OffsetDateTime {
     }
 }
 
+/// This trait is a hack because Rust decided to reject new_unchecked on Duration.
+pub trait DurationNewUnchecked: sealed::SealD {
+    /// Unsafely construct a [Duration] object.
+    ///
+    /// # Arguments
+    ///
+    /// * `secs`: the seconds part.
+    /// * `subsec_nanos`: the sub-nanoseconds part
+    ///
+    /// returns: Duration
+    ///
+    /// # Safety
+    ///
+    /// This is insta-UB if subsec_nanos is >= 1000000000.
+    unsafe fn new_unchecked(secs: u64, subsec_nanos: u32) -> Duration;
+}
+
+impl DurationNewUnchecked for Duration {
+    unsafe fn new_unchecked(secs: u64, subsec_nanos: u32) -> Duration {
+        const NANOS_PER_SEC: u32 = 1000000000;
+        if subsec_nanos >= NANOS_PER_SEC {
+            unsafe { std::hint::unreachable_unchecked() }
+        }
+        Duration::new(secs, subsec_nanos)
+    }
+}
+
+/// This is a replacement of [Instant](std::time::Instant) for real-time systems
+///
+/// # Platform specific behavior
+///
+/// - On all unixes (including macOS), this uses `clock_gettime` with CLOCK_MONOTONIC_RAW
+///   instead of `CLOCK_MONOTONIC` which Rust decided not to do and leave broken (see
+///   https://github.com/rust-lang/rust/issues/77807).
+/// - On windows, this falls back to [Instant](std::time::Instant) which uses the WinAPI `QueryPerformanceCounter`.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(transparent)]
+pub struct Instant(instant::Instant);
+
+impl Instant {
+    /// Creates a new [Instant] to measure performance or time in real-time systems. This instant is
+    /// monotonic and guaranteed to not be skewed by NTP adjustments.
+    #[inline(always)]
+    pub fn now() -> Self {
+        Self(instant::Instant::now())
+    }
+
+    /// Measure the time elapsed since this [Instant] was created.
+    #[inline(always)]
+    pub fn elapsed(&self) -> Duration {
+        self.0.elapsed()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use time::{OffsetDateTime, UtcOffset};
 
-    use crate::time::LocalUtcOffset;
+    use crate::time::{Instant, LocalUtcOffset};
 
     use super::LocalOffsetDateTime;
 
@@ -155,5 +216,15 @@ mod tests {
     fn now_local() {
         let date = OffsetDateTime::now_local();
         println!("Date: {:?}", date)
+    }
+
+    #[test]
+    fn instant() {
+        let time = Instant::now();
+        //nanosleep is really bad...
+        std::thread::sleep(std::time::Duration::from_millis(8));
+        let elapsed = time.elapsed();
+        assert!(elapsed >= std::time::Duration::from_millis(8));
+        assert!(elapsed < std::time::Duration::from_millis(11));
     }
 }
