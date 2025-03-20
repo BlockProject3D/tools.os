@@ -168,7 +168,7 @@ pub fn show<T: AsRef<std::path::Path>>(path: T) -> std::io::Result<PathUpdate<T>
 #[derive(Default)]
 pub struct CopyOptions<'a> {
     overwrite: bool,
-    excludes: Vec<&'a std::ffi::OsStr>
+    excludes: Vec<&'a std::ffi::OsStr>,
 }
 
 impl<'a> CopyOptions<'a> {
@@ -220,25 +220,41 @@ impl<'a> CopyOptions<'a> {
 /// * `dst`:
 ///
 /// returns: Result<(), Error>
-pub fn copy<'a>(src: &std::path::Path, dst: &std::path::Path, options: impl std::borrow::Borrow<CopyOptions<'a>>) -> std::io::Result<()> {
+pub fn copy<'a>(
+    src: &std::path::Path,
+    dst: &std::path::Path,
+    options: impl std::borrow::Borrow<CopyOptions<'a>>,
+) -> std::io::Result<()> {
     let options = options.borrow();
-    if src.file_name().map(|v| options.excludes.contains(&v)).unwrap_or(false) {
+    if src
+        .file_name()
+        .map(|v| options.excludes.contains(&v))
+        .unwrap_or(false)
+    {
         // No error but file is to be excluded so don't copy.
         return Ok(());
     }
     if src.is_file() {
         if dst.is_dir() {
-            let name = src.file_name().ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid source file"))?;
+            let name = src.file_name().ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid source file")
+            })?;
             return copy(src, &dst.join(name), options);
         } else {
             if dst.is_file() && !options.overwrite {
-                return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, "overwriting files is not allowed"))
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "overwriting files is not allowed",
+                ));
             }
             return std::fs::copy(src, dst).map(|_| ());
         }
     }
     if dst.is_file() {
-        return Err(std::io::Error::new(std::io::ErrorKind::NotADirectory, "a directory is needed to copy a directory"));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotADirectory,
+            "a directory is needed to copy a directory",
+        ));
     }
     if !dst.exists() {
         std::fs::create_dir(dst)?;

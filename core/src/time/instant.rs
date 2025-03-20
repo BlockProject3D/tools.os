@@ -26,14 +26,14 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::time::DurationNewUnchecked;
+#[cfg(unix)]
+use libc::{clock_gettime, timespec, CLOCK_MONOTONIC_RAW};
 #[cfg(unix)]
 use std::cmp::Ordering;
 #[cfg(unix)]
 use std::hash::{Hash, Hasher};
 use std::time::Duration;
-#[cfg(unix)]
-use libc::{clock_gettime, timespec, CLOCK_MONOTONIC_RAW};
-use crate::time::DurationNewUnchecked;
 
 #[cfg(unix)]
 #[derive(Copy, Clone)]
@@ -63,7 +63,10 @@ impl Eq for Instant {}
 impl Ord for Instant {
     #[inline(always)]
     fn cmp(&self, other: &Self) -> Ordering {
-        self.0.tv_sec.cmp(&other.0.tv_sec).cmp(&self.0.tv_nsec.cmp(&other.0.tv_nsec))
+        self.0
+            .tv_sec
+            .cmp(&other.0.tv_sec)
+            .cmp(&self.0.tv_nsec.cmp(&other.0.tv_nsec))
     }
 }
 
@@ -111,6 +114,11 @@ impl Instant {
             tv_nsec: 0,
         };
         unsafe { clock_gettime(CLOCK_MONOTONIC_RAW, &mut other) };
-        unsafe { Duration::new_unchecked((other.tv_sec - self.0.tv_sec) as _, (other.tv_nsec - self.0.tv_nsec) as _) }
+        unsafe {
+            Duration::new_unchecked(
+                (other.tv_sec - self.0.tv_sec) as _,
+                (other.tv_nsec - self.0.tv_nsec) as _,
+            )
+        }
     }
 }

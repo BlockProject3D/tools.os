@@ -30,7 +30,6 @@
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![warn(missing_docs)]
-
 // This is unfortunate but objc appears to be generating a lot of these warnings and new versions
 // exists. This is a temporary workaround. The solution would most likely be to re-write objc inline
 // as crates.io forbids patches.

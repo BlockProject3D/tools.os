@@ -31,9 +31,9 @@
 #[cfg(unix)]
 mod unix;
 
+mod instant;
 #[cfg(windows)]
 mod windows;
-mod instant;
 
 use std::time::Duration;
 #[cfg(unix)]
