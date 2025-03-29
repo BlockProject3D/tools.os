@@ -27,12 +27,12 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #[cfg(unix)]
-use std::hash::Hash;
-use std::time::Duration;
+use crate::time::DurationNewUnchecked;
 #[cfg(unix)]
 use libc::{clock_gettime, timespec, CLOCK_MONOTONIC_RAW};
 #[cfg(unix)]
-use crate::time::DurationNewUnchecked;
+use std::hash::Hash;
+use std::time::Duration;
 
 #[cfg(unix)]
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
