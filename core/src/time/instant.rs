@@ -27,54 +27,17 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #[cfg(unix)]
-use std::cmp::Ordering;
-#[cfg(unix)]
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::time::Duration;
 #[cfg(unix)]
 use libc::{clock_gettime, timespec, CLOCK_MONOTONIC_RAW};
+#[cfg(unix)]
 use crate::time::DurationNewUnchecked;
 
 #[cfg(unix)]
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(transparent)]
-pub struct Instant(timespec);
-
-#[cfg(unix)]
-impl PartialEq for Instant {
-    #[inline(always)]
-    fn eq(&self, other: &Self) -> bool {
-        self.0.tv_sec == other.0.tv_sec && self.0.tv_nsec == other.0.tv_nsec
-    }
-}
-
-#[cfg(unix)]
-impl PartialOrd for Instant {
-    #[inline(always)]
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-#[cfg(unix)]
-impl Eq for Instant {}
-
-#[cfg(unix)]
-impl Ord for Instant {
-    #[inline(always)]
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.0.tv_sec.cmp(&other.0.tv_sec).cmp(&self.0.tv_nsec.cmp(&other.0.tv_nsec))
-    }
-}
-
-#[cfg(unix)]
-impl Hash for Instant {
-    #[inline(always)]
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.tv_sec.hash(state);
-        self.0.tv_nsec.hash(state);
-    }
-}
+pub struct Instant(Duration);
 
 #[cfg(windows)]
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -102,7 +65,7 @@ impl Instant {
             tv_nsec: 0,
         };
         unsafe { clock_gettime(CLOCK_MONOTONIC_RAW, &mut t) };
-        Self(t)
+        Self(unsafe { Duration::new_unchecked(t.tv_sec as _, t.tv_nsec as _) })
     }
 
     pub fn elapsed(&self) -> Duration {
@@ -111,6 +74,8 @@ impl Instant {
             tv_nsec: 0,
         };
         unsafe { clock_gettime(CLOCK_MONOTONIC_RAW, &mut other) };
-        unsafe { Duration::new_unchecked((other.tv_sec - self.0.tv_sec) as _, (other.tv_nsec - self.0.tv_nsec) as _) }
+        // Need super slow code cause somehow CLOCK_MONOTONIC_RAW is randomly broken.
+        let a = unsafe { Duration::new_unchecked(other.tv_sec as _, other.tv_nsec as _) };
+        a - self.0
     }
 }
