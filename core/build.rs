@@ -26,32 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Operating System tools and extensions designed for BlockProject3D.
-
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
-#![warn(missing_docs)]
-// This is unfortunate but objc appears to be generating a lot of these warnings and new versions
-// exists. This is a temporary workaround. The solution would most likely be to re-write objc inline
-// as crates.io forbids patches.
-#![cfg_attr(target_vendor = "apple", allow(unexpected_cfgs))]
-
-#[cfg(feature = "dirs")]
-pub mod dirs;
-
-#[cfg(feature = "assets")]
-pub mod assets;
-
-#[cfg(feature = "open")]
-pub mod open;
-
-#[cfg(feature = "fs")]
-pub mod fs;
-
-#[cfg(feature = "cpu-info")]
-pub mod cpu_info;
-
-#[cfg(feature = "time")]
-pub mod time;
-
-#[cfg(feature = "module")]
-pub mod module;
+fn main() {
+    #[cfg(feature="module")]
+    println!("cargo:rustc-env=RUSTC_VERSION={}", rustc_version::version().unwrap());
+}

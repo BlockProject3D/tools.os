@@ -26,32 +26,32 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Operating System tools and extensions designed for BlockProject3D.
+//! This module provides tools to load symbols from external libraries/plugins.
 
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
-#![warn(missing_docs)]
-// This is unfortunate but objc appears to be generating a lot of these warnings and new versions
-// exists. This is a temporary workaround. The solution would most likely be to re-write objc inline
-// as crates.io forbids patches.
-#![cfg_attr(target_vendor = "apple", allow(unexpected_cfgs))]
+/// The rustc version being used (note this version includes the null terminator for simplified
+/// generation.
+pub const RUSTC_VERSION: &str = concat!(env!("RUSTC_VERSION"), "\0");
 
-#[cfg(feature = "dirs")]
-pub mod dirs;
+/// The rustc version being used as a CStr.
+pub const RUSTC_VERSION_C: &std::ffi::CStr = unsafe { std::ffi::CStr::from_ptr(concat!(env!("RUSTC_VERSION"), "\0").as_ptr() as _) };
 
-#[cfg(feature = "assets")]
-pub mod assets;
+/// The type of result when managing module.
+pub type Result<T> = std::result::Result<T, Error>;
 
-#[cfg(feature = "open")]
-pub mod open;
+mod error;
 
-#[cfg(feature = "fs")]
-pub mod fs;
+#[cfg(unix)]
+mod unix;
 
-#[cfg(feature = "cpu-info")]
-pub mod cpu_info;
+#[cfg(windows)]
+mod windows;
+mod loader;
 
-#[cfg(feature = "time")]
-pub mod time;
+#[cfg(unix)]
+pub use self::unix::{ MODULE_EXT, Symbol, Module };
 
-#[cfg(feature = "module")]
-pub mod module;
+#[cfg(windows)]
+pub use self::windows::{ MODULE_EXT, Symbol, Module };
+
+pub use error::Error;
+pub use loader::ModuleLoader;
