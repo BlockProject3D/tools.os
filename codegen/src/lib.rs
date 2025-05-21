@@ -26,35 +26,28 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! This module provides tools to load symbols from external libraries/plugins.
+use proc_macro::TokenStream;
+use cargo_manifest::Manifest;
+use itertools::Itertools;
+use proc_macro2::{Ident, Span};
+use quote::quote;
 
-/// The rustc version being used (note this version includes the null terminator for simplified
-/// generation.
-pub const RUSTC_VERSION: &str = concat!(env!("RUSTC_VERSION"), "\0");
-
-/// The rustc version being used as a CStr.
-pub const RUSTC_VERSION_C: &std::ffi::CStr = unsafe { std::ffi::CStr::from_ptr(concat!(env!("RUSTC_VERSION"), "\0").as_ptr() as _) };
-
-/// The type of result when managing module.
-pub type Result<T> = std::result::Result<T, Error>;
-
-mod error;
-
-#[cfg(unix)]
-mod unix;
-
-#[cfg(windows)]
-mod windows;
-
-mod loader;
-
-#[cfg(unix)]
-pub use self::unix::{ MODULE_EXT, Symbol, Module };
-
-#[cfg(windows)]
-pub use self::windows::{ MODULE_EXT, Symbol, Module };
-
-pub use error::Error;
-pub use loader::ModuleLoader;
-
-pub use bp3d_os_codegen::module_main;
+#[proc_macro]
+pub fn module_main(_: TokenStream) -> TokenStream {
+    let crate_name = std::env::var("CARGO_PKG_NAME").unwrap();
+    let crate_version = std::env::var("CARGO_PKG_VERSION").unwrap();
+    let rustc_version = rustc_version::version().unwrap();
+    let mod_const_name = format!("BP3D_OS_MODULE_{}", crate_name.to_uppercase());
+    let mod_const = Ident::new(&mod_const_name, Span::call_site());
+    let package = Manifest::from_path(std::env::var_os("CARGO_MANIFEST_PATH")
+        .expect("Failed to get CARGO_MANIFEST_PATH"))
+        .expect("Failed to read CARGO_MANIFEST_PATH");
+    let deps_list = package.dependencies.map(|v| v.iter()
+        .map(|(k, v)| format!("{}={}", k, v.req())).join(",")).unwrap_or("".into());
+    let data = format!("BP3D_OS_MODULE|NAME={}|VERSION={}|RUSTC={}|DEPS={}\0", crate_name, crate_version, rustc_version, deps_list);
+    let q = quote! {
+        #[no_mangle]
+        extern "C" static #mod_const: *const std::ffi::c_char = c #data.as_ptr();
+    };
+    q.into()
+}

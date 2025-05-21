@@ -89,6 +89,9 @@ impl ModuleLoader {
     /// This function already does check for the version of rustc and dependencies for Rust based
     /// modules to ensure maximum ABI compatibility.
     ///
+    /// This function assumes the code to be loaded is trusted and delegates this operation to the
+    /// underlying OS.
+    ///
     /// # Arguments
     ///
     /// * `name`: the name of the module to be loaded.
@@ -97,10 +100,10 @@ impl ModuleLoader {
     ///
     /// # Safety
     ///
-    /// This function assumes the module is trusted code and that the module is intended to be used
-    /// with this instance of [ModuleLoader]; if not, this function is UB. Additionally, if some
-    /// dependency used in public facing APIs for the module are not added with
-    /// [add_public_dependency](Self::add_public_dependency), this is also UB.
+    /// It is assumed that the module is intended to be used with this instance of [ModuleLoader];
+    /// if not, this function is UB. Additionally, if some dependency used in public facing APIs
+    /// for the module are not added with [add_public_dependency](Self::add_public_dependency),
+    /// this is also UB.
     pub unsafe fn load(&mut self, name: &str) -> super::Result<&Module> {
         if self.modules.contains_key(name) {
             Ok(self.modules.get(name).unwrap_unchecked())
