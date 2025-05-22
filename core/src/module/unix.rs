@@ -93,6 +93,13 @@ impl Module {
         })
     }
 
+    /// Gets a metadata key by its name.
+    ///
+    /// # Arguments
+    ///
+    /// * `key`: the key to read from the metadata (ex: NAME).
+    ///
+    /// returns: Option<&str>
     pub fn get_metadata_key(&self, key: &str) -> Option<&str> {
         self.metadata.get(key).map(|s| s.as_str())
     }

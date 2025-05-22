@@ -28,23 +28,54 @@
 
 use std::str::Utf8Error;
 
+/// Type of error when using modules.
 pub enum Error {
+    /// The module was not found (argument: module name).
     NotFound(String),
+
+    /// An unexpected NULL character was found.
     Null,
+
+    /// Missing DEPS metadata key for a Rust based module.
     MissingDepsForRust,
+
+    /// Missing RUSTC version key for a Rust based module.
     MissingVersionForRust,
+
+    /// The given string was not UTF8.
     InvalidUtf8(Utf8Error),
+
+    /// The RUSTC version in the module metadata does not match the RUSTC version used to build
+    /// this [ModuleLoader](super::ModuleLoader).
     RustcVersionMismatch {
+        /// The expected RUSTC version.
         expected: &'static str,
+
+        /// The RUSTC version stored in the module which failed to load.
         actual: String
     },
+
+    /// Invalid format for the DEPS metadata key.
     InvalidDepFormat,
+
+    /// Incompatible dependency API found.
     IncompatibleDep {
+        /// The name of the dependency which is incompatible.
         name: String,
+
+        /// The version of the dependency imported by the module which failed to load.
         actual_version: String,
+
+        /// The version of the dependency used by this [ModuleLoader](super::ModuleLoader).
         expected_version: String
     },
+
+    /// An IO error.
     Io(std::io::Error),
+
+    /// The module does not contain a valid metadata string.
     MissingMetadata,
+
+    /// The metadata stored in the module has an invalid format.
     InvalidMetadata
 }
