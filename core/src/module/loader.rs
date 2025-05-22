@@ -27,9 +27,10 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::collections::HashMap;
-use std::ffi::{c_char, CStr};
+use std::fs::File;
+use std::io::Read;
 use std::path::{Path, PathBuf};
-use crate::module::{Error, MODULE_EXT, RUSTC_VERSION_C};
+use crate::module::{Error, MODULE_EXT, RUSTC_VERSION};
 use crate::module::unix::Module;
 
 /// Represents a module loader which can support loading multiple related modules.
@@ -39,27 +40,60 @@ pub struct ModuleLoader {
     deps: HashMap<String, String>
 }
 
+const MOD_HEADER: &[u8] = b"BP3D_OS_MODULE|";
+
+fn load_metadata(path: &Path) -> super::Result<HashMap<String, String>> {
+    let mut file = File::open(path).map_err(Error::Io)?;
+    let mut buffer: [u8; 8192] = [0; 8192];
+    let mut v = Vec::new();
+    while file.read(&mut buffer).map_err(Error::Io)? > 0 {
+        let mut slice = &buffer[..];
+        while let Some(pos) = slice.iter().position(|v| *v == b'B') {
+            let inner = &slice[pos..];
+            let end = inner.iter().position(|v| *v == 0).unwrap_or(inner.len());
+            v.extend_from_slice(&inner[..end + 1]);
+            if v[v.len() - 1] == 0 {
+                if v.starts_with(MOD_HEADER) {
+                    // We found the module metadata.
+                    let mut map = HashMap::new();
+                    let data = std::str::from_utf8(&v).map_err(Error::InvalidUtf8)?;
+                    let mut vars = data.split("|");
+                    vars.next();
+                    for var in vars {
+                        let mut var = var.split("=");
+                        let key = var.next().ok_or(Error::InvalidMetadata)?;
+                        let value = var.next().ok_or(Error::InvalidMetadata)?;
+                        map.insert(key.into(), value.into());
+                    }
+                    return Ok(map);
+                }
+                v.clear();
+                slice = &inner[end + 1..];
+            } else {
+                break;
+            }
+        }
+    }
+    Err(Error::MissingMetadata)
+}
+
 unsafe fn load_lib(deps2: &mut HashMap<String, String>, name: &str, path: &Path) -> super::Result<Module> {
-    let module = Module::load(path)?;
-    // This symbol is optional and will not exist on C/C++ modules, only on Rust based modules.
-    // The main reason the rustc version is checked on Rust modules is for interop with user
-    // data types declared by other modules as well as the destructor system which isn't C/C++
-    // compatible.
-    let rustc_const = format!("BP3D_MODULE_{}_RUSTC_VERSION", name.to_uppercase());
-    if let Some(rustc_version) = module.load_symbol::<c_char>(rustc_const)? {
+    let metadata = load_metadata(path)?;
+    if metadata.get("TYPE").ok_or(Error::InvalidMetadata)? == "RUST" {
+        // This symbol is optional and will not exist on C/C++ modules, only on Rust based modules.
+        // The main reason the rustc version is checked on Rust modules is for interop with user
+        // data types declared by other modules as well as the destructor system which isn't C/C++
+        // compatible.
+        let rustc_version = metadata.get("RUSTC").ok_or(Error::MissingVersionForRust)?;
         // This is the list of dependencies of the module to be loaded.
         // This is optional for C/C++ modules but required for rust modules.
         // In rust modules this is used to ensure the module to be loaded does not present an
         // incompatible ABI with another module.
-        let deps_const = format!("BP3D_MODULE_{}_DEPS", name.to_uppercase());
-        let deps = module.load_symbol::<c_char>(deps_const)?.ok_or(Error::MissingDepsForRust)?;
-        let rustc_version = CStr::from_ptr(rustc_version.as_ptr());
-        let deps = std::str::from_utf8(CStr::from_ptr(deps.as_ptr()).to_bytes())
-            .map_err(Error::InvalidUtf8)?;
-        if rustc_version != RUSTC_VERSION_C {
+        let deps = metadata.get("DEPS").ok_or(Error::MissingDepsForRust)?;
+        if rustc_version != RUSTC_VERSION {
             //mismatch between rust versions
             return Err(Error::RustcVersionMismatch {
-                expected: RUSTC_VERSION_C,
+                expected: RUSTC_VERSION,
                 actual: rustc_version.into()
             });
         }
@@ -79,6 +113,11 @@ unsafe fn load_lib(deps2: &mut HashMap<String, String>, name: &str, path: &Path)
                 deps2.insert(name.into(), version.into());
             }
         }
+    }
+    let module = Module::load(path, metadata)?;
+    let main_name = format!("bp3d_os_module_{}_open", name);
+    if let Some(main) = module.load_symbol::<extern "C" fn()>(main_name)? {
+        main.as_ref()();
     }
     Ok(module)
 }
@@ -142,6 +181,10 @@ impl ModuleLoader {
     /// function is UB.
     pub unsafe fn unload(&mut self, name: &str) -> super::Result<()> {
         let module = self.modules.remove(name).ok_or(Error::NotFound(name.into()))?;
+        let main_name = format!("bp3d_os_module_{}_close", name);
+        if let Some(main) = module.load_symbol::<extern "C" fn()>(main_name)? {
+            main.as_ref()();
+        }
         module.unload();
         Ok(())
     }

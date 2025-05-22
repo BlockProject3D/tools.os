@@ -26,22 +26,25 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::ffi::{CStr, CString};
 use std::str::Utf8Error;
 
 pub enum Error {
     NotFound(String),
     Null,
     MissingDepsForRust,
+    MissingVersionForRust,
     InvalidUtf8(Utf8Error),
     RustcVersionMismatch {
-        expected: &'static CStr,
-        actual: CString
+        expected: &'static str,
+        actual: String
     },
     InvalidDepFormat,
     IncompatibleDep {
         name: String,
         actual_version: String,
         expected_version: String
-    }
+    },
+    Io(std::io::Error),
+    MissingMetadata,
+    InvalidMetadata
 }

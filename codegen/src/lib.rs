@@ -44,7 +44,7 @@ pub fn module_main(_: TokenStream) -> TokenStream {
         .expect("Failed to read CARGO_MANIFEST_PATH");
     let deps_list = package.dependencies.map(|v| v.iter()
         .map(|(k, v)| format!("{}={}", k, v.req())).join(",")).unwrap_or("".into());
-    let data = format!("BP3D_OS_MODULE|NAME={}|VERSION={}|RUSTC={}|DEPS={}\0", crate_name, crate_version, rustc_version, deps_list);
+    let data = format!("\0BP3D_OS_MODULE|TYPE=RUST|NAME={}|VERSION={}|RUSTC={}|DEPS={}\0", crate_name, crate_version, rustc_version, deps_list);
     let q = quote! {
         #[no_mangle]
         extern "C" static #mod_const: *const std::ffi::c_char = c #data.as_ptr();

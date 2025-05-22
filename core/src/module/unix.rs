@@ -26,7 +26,9 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::collections::HashMap;
 use std::ffi::{c_void, CString};
+use std::fmt::{Debug, Display, Formatter};
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use libc::{dlclose, dlopen, dlsym, RTLD_LAZY};
@@ -41,6 +43,7 @@ pub const MODULE_EXT: &str = "dylib";
 pub const MODULE_EXT: &str = "so";
 
 /// This represents a symbol from a module.
+#[derive(Debug)]
 pub struct Symbol<T>(*const T);
 
 impl<T> Symbol<T> {
@@ -56,7 +59,17 @@ impl<T> Symbol<T> {
 }
 
 /// This represents a module shared object.
-pub struct Module(*mut c_void);
+#[derive(Debug)]
+pub struct Module {
+    handle: *mut c_void,
+    metadata: HashMap<String, String>
+}
+
+impl Display for Module {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.metadata.fmt(f)
+    }
+}
 
 impl Module {
     /// Loads a module from the given path.
@@ -64,6 +77,7 @@ impl Module {
     /// # Arguments
     ///
     /// * `path`: full path to the shared library including extension.
+    /// * `metadata`: module metadata.
     ///
     /// returns: Result<Module, Error>
     ///
@@ -71,9 +85,16 @@ impl Module {
     ///
     /// This function is unsafe as it assumes the module to be loaded is trusted code. If the module
     /// contains any constructor which causes UB then this function causes UB.
-    pub unsafe fn load(path: impl AsRef<Path>) -> super::Result<Self> {
+    pub unsafe fn load(path: impl AsRef<Path>, metadata: HashMap<String, String>) -> super::Result<Self> {
         let path = CString::new(path.as_ref().as_os_str().as_bytes()).map_err(|_| Error::Null)?;
-        Ok(Module(dlopen(path.as_ptr(), RTLD_LAZY)))
+        Ok(Module{
+            handle: dlopen(path.as_ptr(), RTLD_LAZY),
+            metadata
+        })
+    }
+
+    pub fn get_metadata_key(&self, key: &str) -> Option<&str> {
+        self.metadata.get(key).map(|s| s.as_str())
     }
 
     /// Attempts to load the given symbol from this module.
@@ -90,7 +111,7 @@ impl Module {
     /// incompatible types. If this condition is not maintained then this function is UB.
     pub unsafe fn load_symbol<T>(&self, name: impl AsRef<str>) -> super::Result<Option<Symbol<T>>> {
         let name = CString::new(name.as_ref().as_bytes()).map_err(|_| Error::Null)?;
-        let sym = dlsym(self.0, name.as_ptr());
+        let sym = dlsym(self.handle, name.as_ptr());
         if sym.is_null() {
             Ok(None)
         } else {
@@ -105,6 +126,6 @@ impl Module {
     /// This function assumes no Symbols from this module are currently in scope, if not this
     /// function is UB.
     pub unsafe fn unload(self) {
-        dlclose(self.0);
+        dlclose(self.handle);
     }
 }

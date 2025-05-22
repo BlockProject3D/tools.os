@@ -30,10 +30,7 @@
 
 /// The rustc version being used (note this version includes the null terminator for simplified
 /// generation.
-pub const RUSTC_VERSION: &str = concat!(env!("RUSTC_VERSION"), "\0");
-
-/// The rustc version being used as a CStr.
-pub const RUSTC_VERSION_C: &std::ffi::CStr = unsafe { std::ffi::CStr::from_ptr(concat!(env!("RUSTC_VERSION"), "\0").as_ptr() as _) };
+pub const RUSTC_VERSION: &str = env!("RUSTC_VERSION");
 
 /// The type of result when managing module.
 pub type Result<T> = std::result::Result<T, Error>;
