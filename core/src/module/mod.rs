@@ -33,9 +33,9 @@
 pub const RUSTC_VERSION: &str = env!("RUSTC_VERSION");
 
 /// The type of result when managing module.
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, error::Error>;
 
-mod error;
+pub mod error;
 
 #[cfg(unix)]
 mod unix;
@@ -51,5 +51,4 @@ pub use self::unix::{ MODULE_EXT, Symbol, Module };
 #[cfg(windows)]
 pub use self::windows::{ MODULE_EXT, Symbol, Module };
 
-pub use error::Error;
 pub use loader::ModuleLoader;

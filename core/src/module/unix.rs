@@ -32,7 +32,7 @@ use std::fmt::{Debug, Display, Formatter};
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use libc::{dlclose, dlopen, dlsym, RTLD_LAZY};
-use crate::module::Error;
+use crate::module::error::Error;
 
 /// The extension of a module.
 #[cfg(target_vendor = "apple")]

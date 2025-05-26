@@ -30,10 +30,12 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use crate::module::{Error, MODULE_EXT, RUSTC_VERSION};
+use crate::module::{MODULE_EXT, RUSTC_VERSION};
+use crate::module::error::{Error, IncompatibleDependency, IncompatibleRustc};
 use crate::module::unix::Module;
 
 /// Represents a module loader which can support loading multiple related modules.
+#[derive(Default)]
 pub struct ModuleLoader {
     paths: Vec<PathBuf>,
     modules: HashMap<String, Module>,
@@ -92,10 +94,10 @@ unsafe fn load_lib(deps2: &mut HashMap<String, String>, name: &str, path: &Path)
         let deps = metadata.get("DEPS").ok_or(Error::MissingDepsForRust)?;
         if rustc_version != RUSTC_VERSION {
             //mismatch between rust versions
-            return Err(Error::RustcVersionMismatch {
+            return Err(Error::RustcVersionMismatch(IncompatibleRustc {
                 expected: RUSTC_VERSION,
                 actual: rustc_version.into()
-            });
+            }));
         }
         for dep in deps.split(",") {
             let mut iter = dep.split("=");
@@ -103,11 +105,11 @@ unsafe fn load_lib(deps2: &mut HashMap<String, String>, name: &str, path: &Path)
             let version = iter.next().ok_or(Error::InvalidDepFormat)?;
             if let Some(expected_version) = deps2.get(name) {
                 if version != expected_version {
-                    return Err(Error::IncompatibleDep {
+                    return Err(Error::IncompatibleDep(IncompatibleDependency {
                         name: name.into(),
                         expected_version: expected_version.into(),
                         actual_version: version.into()
-                    });
+                    }));
                 }
             } else {
                 deps2.insert(name.into(), version.into());
@@ -123,6 +125,11 @@ unsafe fn load_lib(deps2: &mut HashMap<String, String>, name: &str, path: &Path)
 }
 
 impl ModuleLoader {
+    /// Create a new instance of a [ModuleLoader].
+    pub fn new() -> ModuleLoader {
+        Self::default()
+    }
+
     /// Attempts to load a module from the specified path and name.
     ///
     /// This function already does check for the version of rustc and dependencies for Rust based

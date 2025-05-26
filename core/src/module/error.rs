@@ -26,56 +26,81 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use std::fmt::{Display, Formatter};
 use std::str::Utf8Error;
+use bp3d_util::simple_error;
 
-/// Type of error when using modules.
-pub enum Error {
-    /// The module was not found (argument: module name).
-    NotFound(String),
+#[derive(Debug, Clone, Eq, PartialEq)]
+/// Describes an incompatible RUSTC version when attempting to load Rust based modules.
+pub struct IncompatibleRustc {
+    /// The expected RUSTC version.
+    pub expected: &'static str,
 
-    /// An unexpected NULL character was found.
-    Null,
+    /// The RUSTC version stored in the module which failed to load.
+    pub actual: String
+}
 
-    /// Missing DEPS metadata key for a Rust based module.
-    MissingDepsForRust,
+impl Display for IncompatibleRustc {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "expected version {}, got version {}", self.expected, self.actual)
+    }
+}
 
-    /// Missing RUSTC version key for a Rust based module.
-    MissingVersionForRust,
+#[derive(Debug, Clone, Eq, PartialEq)]
+/// Describes an incompatible dependency (a dependency which may produce ABI issues) when attempting
+/// to load Rust based modules.
+pub struct IncompatibleDependency {
+    /// The name of the dependency which is incompatible.
+    pub name: String,
 
-    /// The given string was not UTF8.
-    InvalidUtf8(Utf8Error),
+    /// The version of the dependency imported by the module which failed to load.
+    pub actual_version: String,
 
-    /// The RUSTC version in the module metadata does not match the RUSTC version used to build
-    /// this [ModuleLoader](super::ModuleLoader).
-    RustcVersionMismatch {
-        /// The expected RUSTC version.
-        expected: &'static str,
+    /// The version of the dependency used by this [ModuleLoader](super::ModuleLoader).
+    pub expected_version: String
+}
 
-        /// The RUSTC version stored in the module which failed to load.
-        actual: String
-    },
+impl Display for IncompatibleDependency {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "expected version {}, got version {} for dependency '{}'", self.expected_version, self.actual_version, self.name)
+    }
+}
 
-    /// Invalid format for the DEPS metadata key.
-    InvalidDepFormat,
+simple_error! {
+    /// Type of error when using modules.
+    pub Error {
+        /// The module was not found (argument: module name).
+        NotFound(String) => "module not found ({})",
 
-    /// Incompatible dependency API found.
-    IncompatibleDep {
-        /// The name of the dependency which is incompatible.
-        name: String,
+        /// An unexpected NULL character was found.
+        Null => "unexpected null character in string",
 
-        /// The version of the dependency imported by the module which failed to load.
-        actual_version: String,
+        /// Missing DEPS metadata key for a Rust based module.
+        MissingDepsForRust => "missing DEPS metadata key for a Rust module",
 
-        /// The version of the dependency used by this [ModuleLoader](super::ModuleLoader).
-        expected_version: String
-    },
+        /// Missing RUSTC version key for a Rust based module.
+        MissingVersionForRust => "missing RUSTC_VERSION metadata key for a Rust module",
 
-    /// An IO error.
-    Io(std::io::Error),
+        /// The given string was not UTF8.
+        InvalidUtf8(Utf8Error) => "invalid utf8: {}",
 
-    /// The module does not contain a valid metadata string.
-    MissingMetadata,
+        /// The RUSTC version in the module metadata does not match the RUSTC version used to build
+        /// this [ModuleLoader](super::ModuleLoader).
+        RustcVersionMismatch(IncompatibleRustc) => "incompatible rustc version: {}",
 
-    /// The metadata stored in the module has an invalid format.
-    InvalidMetadata
+        /// Invalid format for the DEPS metadata key.
+        InvalidDepFormat => "invalid dependency format",
+
+        /// Incompatible dependency API found.
+        IncompatibleDep(IncompatibleDependency) => "incompatible dependency: {}",
+
+        /// An IO error.
+        Io(std::io::Error) => "io error: {}",
+
+        /// The module does not contain a valid metadata string.
+        MissingMetadata => "missing module metadata",
+
+        /// The metadata stored in the module has an invalid format.
+        InvalidMetadata => "invalid module metadata format"
+    }
 }
