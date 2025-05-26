@@ -32,7 +32,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use crate::module::{MODULE_EXT, RUSTC_VERSION};
 use crate::module::error::{Error, IncompatibleDependency, IncompatibleRustc};
-use crate::module::unix::Module;
+use crate::module::Module;
 
 /// Represents a module loader which can support loading multiple related modules.
 #[derive(Default)]

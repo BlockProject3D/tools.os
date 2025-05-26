@@ -51,6 +51,6 @@ pub mod symbol;
 pub use self::unix::{ MODULE_EXT, Module };
 
 #[cfg(windows)]
-pub use self::windows::{ MODULE_EXT, Symbol, Module };
+pub use self::windows::{ MODULE_EXT, Module };
 
 pub use loader::ModuleLoader;
