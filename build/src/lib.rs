@@ -26,9 +26,9 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::path::PathBuf;
 use cargo_manifest::Manifest;
 use itertools::Itertools;
+use std::path::PathBuf;
 
 pub struct ModuleMain {
     rust_code: String,
@@ -42,33 +42,48 @@ impl ModuleMain {
         let crate_version = std::env::var("CARGO_PKG_VERSION").unwrap();
         let rustc_version = rustc_version::version().unwrap();
         let mod_const_name = format!("BP3D_OS_MODULE_{}", crate_name.to_uppercase());
-        let package = Manifest::from_path(std::env::var_os("CARGO_MANIFEST_PATH")
-            .expect("Failed to get CARGO_MANIFEST_PATH"))
-            .expect("Failed to read CARGO_MANIFEST_PATH");
-        let deps_list = package.dependencies.map(|v| v.iter()
-            .map(|(k, v)| format!("{}={}", k, v.req())).join(",")).unwrap_or("".into());
-        let data = format!("\"\0BP3D_OS_MODULE|TYPE=RUST|NAME={}|VERSION={}|RUSTC={}|DEPS={}\0\"", crate_name, crate_version, rustc_version, deps_list);
-        let rust_code = format!(r"
+        let package = Manifest::from_path(
+            std::env::var_os("CARGO_MANIFEST_PATH").expect("Failed to get CARGO_MANIFEST_PATH"),
+        )
+        .expect("Failed to read CARGO_MANIFEST_PATH");
+        let deps_list = package
+            .dependencies
+            .map(|v| {
+                v.iter()
+                    .map(|(k, v)| format!("{}={}", k, v.req()))
+                    .join(",")
+            })
+            .unwrap_or("".into());
+        let data = format!(
+            "\"\0BP3D_OS_MODULE|TYPE=RUST|NAME={}|VERSION={}|RUSTC={}|DEPS={}\0\"",
+            crate_name, crate_version, rustc_version, deps_list
+        );
+        let rust_code = format!(
+            r"
     #[unsafe(no_mangle)]
     static mut {mod_const_name}: *const std::ffi::c_char = {data}.as_ptr() as _;
-");
-        let out_path = PathBuf::from(std::env::var_os("OUT_DIR").unwrap()).join("bp3d_os_module.rs");
+"
+        );
+        let out_path =
+            PathBuf::from(std::env::var_os("OUT_DIR").unwrap()).join("bp3d_os_module.rs");
         Self {
             rust_code,
             out_path,
-            crate_name
+            crate_name,
         }
     }
 
     pub fn add_open(mut self) -> Self {
         let motherfuckingrust = "extern \"C\"";
         let crate_name = &self.crate_name;
-        let rust_code = format!(r"
+        let rust_code = format!(
+            r"
     #[unsafe(no_mangle)]
     pub {motherfuckingrust} fn bp3d_os_module_{crate_name}_open() {{
         module_open();
     }}
-");
+"
+        );
         self.rust_code += &rust_code;
         self
     }
@@ -76,12 +91,14 @@ impl ModuleMain {
     pub fn add_close(mut self) -> Self {
         let motherfuckingrust = "extern \"C\"";
         let crate_name = &self.crate_name;
-        let rust_code = format!(r"
+        let rust_code = format!(
+            r"
     #[unsafe(no_mangle)]
     pub {motherfuckingrust} fn bp3d_os_module_{crate_name}_close() {{
         module_close();
     }}
-");
+"
+        );
         self.rust_code += &rust_code;
         self
     }
@@ -89,10 +106,13 @@ impl ModuleMain {
     pub fn build(self) {
         let crate_name = self.crate_name;
         std::fs::write(&self.out_path, self.rust_code).unwrap();
-        #[cfg(target_vendor="apple")]
+        #[cfg(target_vendor = "apple")]
         println!("cargo::rustc-link-arg-cdylib=-Wl,-install_name,@rpath/lib{crate_name}.dylib");
-        #[cfg(all(unix, not(target_vendor="apple")))]
+        #[cfg(all(unix, not(target_vendor = "apple")))]
         println!("cargo::rustc-link-arg-cdylib=-Wl,-soname,lib{crate_name}.so");
-        println!("cargo:rustc-env=BP3D_OS_MODULE_MAIN={}", self.out_path.display());
+        println!(
+            "cargo:rustc-env=BP3D_OS_MODULE_MAIN={}",
+            self.out_path.display()
+        );
     }
 }

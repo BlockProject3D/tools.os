@@ -26,20 +26,20 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::module::error::{Error, IncompatibleDependency, IncompatibleRustc};
+use crate::module::Module;
+use crate::module::{MODULE_EXT, RUSTC_VERSION};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use crate::module::{MODULE_EXT, RUSTC_VERSION};
-use crate::module::error::{Error, IncompatibleDependency, IncompatibleRustc};
-use crate::module::Module;
 
 /// Represents a module loader which can support loading multiple related modules.
 #[derive(Default)]
 pub struct ModuleLoader {
     paths: Vec<PathBuf>,
     modules: HashMap<String, Module>,
-    deps: HashMap<String, String>
+    deps: HashMap<String, String>,
 }
 
 const MOD_HEADER: &[u8] = b"BP3D_OS_MODULE|";
@@ -81,7 +81,11 @@ fn load_metadata(path: &Path) -> super::Result<HashMap<String, String>> {
     Err(Error::MissingMetadata)
 }
 
-unsafe fn load_lib(deps2: &mut HashMap<String, String>, name: &str, path: &Path) -> super::Result<Module> {
+unsafe fn load_lib(
+    deps2: &mut HashMap<String, String>,
+    name: &str,
+    path: &Path,
+) -> super::Result<Module> {
     let metadata = load_metadata(path)?;
     if metadata.get("TYPE").ok_or(Error::InvalidMetadata)? == "RUST" {
         // This symbol is optional and will not exist on C/C++ modules, only on Rust based modules.
@@ -98,7 +102,7 @@ unsafe fn load_lib(deps2: &mut HashMap<String, String>, name: &str, path: &Path)
             //mismatch between rust versions
             return Err(Error::RustcVersionMismatch(IncompatibleRustc {
                 expected: RUSTC_VERSION,
-                actual: rustc_version.into()
+                actual: rustc_version.into(),
             }));
         }
         // Amazingly broken split function that cannot figure out that empty strings should be
@@ -113,7 +117,7 @@ unsafe fn load_lib(deps2: &mut HashMap<String, String>, name: &str, path: &Path)
                         return Err(Error::IncompatibleDep(IncompatibleDependency {
                             name: name.into(),
                             expected_version: expected_version.into(),
-                            actual_version: version.into()
+                            actual_version: version.into(),
                         }));
                     }
                 } else {
@@ -195,7 +199,10 @@ impl ModuleLoader {
     /// function is UB.
     pub unsafe fn unload(&mut self, name: &str) -> super::Result<()> {
         let name = name.replace("-", "_");
-        let module = self.modules.remove(&name).ok_or_else(|| Error::NotFound(name.clone()))?;
+        let module = self
+            .modules
+            .remove(&name)
+            .ok_or_else(|| Error::NotFound(name.clone()))?;
         let main_name = format!("bp3d_os_module_{}_close", &name);
         if let Some(main) = module.load_symbol::<extern "C" fn()>(main_name)? {
             main.call();

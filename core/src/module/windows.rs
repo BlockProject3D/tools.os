@@ -26,14 +26,14 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::module::error::Error;
+use crate::module::symbol::Symbol;
 use std::collections::HashMap;
 use std::ffi::CString;
 use std::fmt::{Debug, Display, Formatter};
 use std::os::windows::ffi::OsStrExt;
 use std::path::Path;
 use windows_sys::Win32::Foundation::{FreeLibrary, HMODULE};
-use crate::module::error::Error;
-use crate::module::symbol::Symbol;
 use windows_sys::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryW};
 
 /// The extension of a module.
@@ -44,7 +44,7 @@ pub const MODULE_EXT: &str = "dll";
 #[derive(Debug)]
 pub struct Module {
     handle: HMODULE,
-    metadata: HashMap<String, String>
+    metadata: HashMap<String, String>,
 }
 
 impl Display for Module {
@@ -69,7 +69,10 @@ impl Module {
     /// contains any constructor which causes UB then this function causes UB. Additionally, it is
     /// UB to load a module with a DllMain function inside, if you absolutely need a DllMain function
     /// use `bp3d_os_module_<name>_open` and `bp3d_os_module_<name>_close`.
-    pub unsafe fn load(path: impl AsRef<Path>, metadata: HashMap<String, String>) -> super::Result<Self> {
+    pub unsafe fn load(
+        path: impl AsRef<Path>,
+        metadata: HashMap<String, String>,
+    ) -> super::Result<Self> {
         let mut path = path.as_ref().as_os_str().encode_wide().collect::<Vec<_>>();
         if path.iter().any(|v| *v == 0x0) {
             return Err(Error::Null);
@@ -79,10 +82,7 @@ impl Module {
         if handle.is_null() {
             return Err(Error::Io(std::io::Error::last_os_error()));
         }
-        Ok(Module{
-            handle,
-            metadata
-        })
+        Ok(Module { handle, metadata })
     }
 
     /// Gets a metadata key by its name.
