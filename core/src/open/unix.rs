@@ -1,4 +1,4 @@
-// Copyright (c) 2023, BlockProject 3D
+// Copyright (c) 2025, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -31,9 +31,9 @@ use crate::open::{Error, Result as OpenResult, Url};
 use std::ffi::{OsStr, OsString};
 use std::path::Path;
 use std::process::Command;
-use zbus::{blocking::Connection, dbus_proxy, Result};
+use zbus::{blocking::Connection, proxy, Result};
 
-#[dbus_proxy(
+#[proxy(
     default_service = "org.freedesktop.FileManager1",
     interface = "org.freedesktop.FileManager1",
     default_path = "/org/freedesktop/FileManager1"
