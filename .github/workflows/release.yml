@@ -8,7 +8,5 @@ on:
 jobs:
   Publish:
     uses: BlockProject3D/workflows/.github/workflows/Publish.yml@main
-    with:
-      cwd: core
     secrets:
       RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}

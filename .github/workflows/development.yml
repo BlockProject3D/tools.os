@@ -15,7 +15,5 @@ jobs:
   Release:
     uses: BlockProject3D/workflows/.github/workflows/Release.yml@main
     needs: Test
-    with:
-      cwd: core
     secrets:
       RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
