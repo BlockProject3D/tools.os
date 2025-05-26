@@ -125,7 +125,7 @@ unsafe fn load_lib(deps2: &mut HashMap<String, String>, name: &str, path: &Path)
     let module = Module::load(path, metadata)?;
     let main_name = format!("bp3d_os_module_{}_open", name);
     if let Some(main) = module.load_symbol::<extern "C" fn()>(main_name)? {
-        main.as_ref()();
+        main.call();
     }
     Ok(module)
 }
@@ -194,10 +194,11 @@ impl ModuleLoader {
     /// This function assumes no Symbols from this module are currently in scope, if not this
     /// function is UB.
     pub unsafe fn unload(&mut self, name: &str) -> super::Result<()> {
-        let module = self.modules.remove(name).ok_or(Error::NotFound(name.into()))?;
-        let main_name = format!("bp3d_os_module_{}_close", name);
+        let name = name.replace("-", "_");
+        let module = self.modules.remove(&name).ok_or_else(|| Error::NotFound(name.clone()))?;
+        let main_name = format!("bp3d_os_module_{}_close", &name);
         if let Some(main) = module.load_symbol::<extern "C" fn()>(main_name)? {
-            main.as_ref()();
+            main.call();
         }
         module.unload();
         Ok(())

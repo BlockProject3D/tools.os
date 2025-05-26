@@ -45,8 +45,10 @@ mod windows;
 
 mod loader;
 
+pub mod symbol;
+
 #[cfg(unix)]
-pub use self::unix::{ MODULE_EXT, Symbol, Module };
+pub use self::unix::{ MODULE_EXT, Module };
 
 #[cfg(windows)]
 pub use self::windows::{ MODULE_EXT, Symbol, Module };

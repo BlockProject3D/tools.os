@@ -33,6 +33,7 @@ use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use libc::{dlclose, dlopen, dlsym, RTLD_LAZY};
 use crate::module::error::Error;
+use crate::module::symbol::Symbol;
 
 /// The extension of a module.
 #[cfg(target_vendor = "apple")]
@@ -41,22 +42,6 @@ pub const MODULE_EXT: &str = "dylib";
 /// The extension of a module.
 #[cfg(all(unix, not(target_vendor = "apple")))]
 pub const MODULE_EXT: &str = "so";
-
-/// This represents a symbol from a module.
-#[derive(Debug)]
-pub struct Symbol<T>(*const T);
-
-impl<T> Symbol<T> {
-    /// Returns the raw pointer of this symbol.
-    pub fn as_ptr(&self) -> *const T {
-        self.0
-    }
-
-    /// Returns a reference to this symbol.
-    pub fn as_ref(&self) -> &T {
-        unsafe { &*self.0 }
-    }
-}
 
 /// This represents a module shared object.
 #[derive(Debug)]
@@ -122,7 +107,7 @@ impl Module {
         if sym.is_null() {
             Ok(None)
         } else {
-            Ok(Some(Symbol(sym as *const T)))
+            Ok(Some(Symbol::from_raw(sym)))
         }
     }
 
