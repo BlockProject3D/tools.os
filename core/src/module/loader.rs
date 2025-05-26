@@ -56,6 +56,8 @@ fn load_metadata(path: &Path) -> super::Result<HashMap<String, String>> {
             v.extend_from_slice(&inner[..end + 1]);
             if v[v.len() - 1] == 0 {
                 if v.starts_with(MOD_HEADER) {
+                    // Remove terminator NULL.
+                    let v = &v[..v.len() - 1];
                     // We found the module metadata.
                     let mut map = HashMap::new();
                     let data = std::str::from_utf8(&v).map_err(Error::InvalidUtf8)?;
@@ -99,20 +101,24 @@ unsafe fn load_lib(deps2: &mut HashMap<String, String>, name: &str, path: &Path)
                 actual: rustc_version.into()
             }));
         }
-        for dep in deps.split(",") {
-            let mut iter = dep.split("=");
-            let name = iter.next().ok_or(Error::InvalidDepFormat)?;
-            let version = iter.next().ok_or(Error::InvalidDepFormat)?;
-            if let Some(expected_version) = deps2.get(name) {
-                if version != expected_version {
-                    return Err(Error::IncompatibleDep(IncompatibleDependency {
-                        name: name.into(),
-                        expected_version: expected_version.into(),
-                        actual_version: version.into()
-                    }));
+        // Amazingly broken split function that cannot figure out that empty strings should be
+        // ignored...
+        if !deps.is_empty() {
+            for dep in deps.split(",") {
+                let mut iter = dep.split("=");
+                let name = iter.next().ok_or(Error::InvalidDepFormat)?;
+                let version = iter.next().ok_or(Error::InvalidDepFormat)?;
+                if let Some(expected_version) = deps2.get(name) {
+                    if version != expected_version {
+                        return Err(Error::IncompatibleDep(IncompatibleDependency {
+                            name: name.into(),
+                            expected_version: expected_version.into(),
+                            actual_version: version.into()
+                        }));
+                    }
+                } else {
+                    deps2.insert(name.into(), version.into());
                 }
-            } else {
-                deps2.insert(name.into(), version.into());
             }
         }
     }
@@ -155,11 +161,11 @@ impl ModuleLoader {
         if self.modules.contains_key(&name) {
             Ok(self.modules.get(&name).unwrap_unchecked())
         } else {
-            let name = format!("{}.{}", name, MODULE_EXT);
-            let name2 = format!("lib{}.{}", name, MODULE_EXT);
+            let name2 = format!("{}.{}", name, MODULE_EXT);
+            let name3 = format!("lib{}.{}", name, MODULE_EXT);
             for path in self.paths.iter() {
-                let search = path.join(&name);
-                let search2 = path.join(&name2);
+                let search = path.join(&name2);
+                let search2 = path.join(&name3);
                 let mut module = None;
                 if search.exists() {
                     module = Some(load_lib(&mut self.deps, &name, &search)?);
