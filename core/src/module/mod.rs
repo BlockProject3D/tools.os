@@ -53,5 +53,3 @@ pub use self::windows::{ MODULE_EXT, Symbol, Module };
 
 pub use error::Error;
 pub use loader::ModuleLoader;
-
-pub use bp3d_os_codegen::module_main;

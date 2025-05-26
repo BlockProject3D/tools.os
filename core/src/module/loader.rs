@@ -144,8 +144,9 @@ impl ModuleLoader {
     /// for the module are not added with [add_public_dependency](Self::add_public_dependency),
     /// this is also UB.
     pub unsafe fn load(&mut self, name: &str) -> super::Result<&Module> {
-        if self.modules.contains_key(name) {
-            Ok(self.modules.get(name).unwrap_unchecked())
+        let name = name.replace("-", "_");
+        if self.modules.contains_key(&name) {
+            Ok(self.modules.get(&name).unwrap_unchecked())
         } else {
             let name = format!("{}.{}", name, MODULE_EXT);
             let name2 = format!("lib{}.{}", name, MODULE_EXT);

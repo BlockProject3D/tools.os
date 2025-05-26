@@ -26,28 +26,30 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use proc_macro::TokenStream;
+use std::path::PathBuf;
 use cargo_manifest::Manifest;
 use itertools::Itertools;
-use proc_macro2::{Ident, Span};
-use quote::quote;
 
-#[proc_macro]
-pub fn module_main(_: TokenStream) -> TokenStream {
-    let crate_name = std::env::var("CARGO_PKG_NAME").unwrap();
+pub fn module_main() {
+    let crate_name = std::env::var("CARGO_PKG_NAME").unwrap().replace('-', "_");
     let crate_version = std::env::var("CARGO_PKG_VERSION").unwrap();
     let rustc_version = rustc_version::version().unwrap();
     let mod_const_name = format!("BP3D_OS_MODULE_{}", crate_name.to_uppercase());
-    let mod_const = Ident::new(&mod_const_name, Span::call_site());
     let package = Manifest::from_path(std::env::var_os("CARGO_MANIFEST_PATH")
         .expect("Failed to get CARGO_MANIFEST_PATH"))
         .expect("Failed to read CARGO_MANIFEST_PATH");
     let deps_list = package.dependencies.map(|v| v.iter()
         .map(|(k, v)| format!("{}={}", k, v.req())).join(",")).unwrap_or("".into());
-    let data = format!("\0BP3D_OS_MODULE|TYPE=RUST|NAME={}|VERSION={}|RUSTC={}|DEPS={}\0", crate_name, crate_version, rustc_version, deps_list);
-    let q = quote! {
-        #[no_mangle]
-        extern "C" static #mod_const: *const std::ffi::c_char = c #data.as_ptr();
-    };
-    q.into()
+    let data = format!("\"\0BP3D_OS_MODULE|TYPE=RUST|NAME={}|VERSION={}|RUSTC={}|DEPS={}\0\"", crate_name, crate_version, rustc_version, deps_list);
+    let rust_code = format!(r"
+    #[unsafe(no_mangle)]
+    static mut {mod_const_name}: *const std::ffi::c_char = {data}.as_ptr() as _;
+");
+    let path = PathBuf::from(std::env::var_os("OUT_DIR").unwrap()).join("bp3d_os_module.rs");
+    std::fs::write(&path, rust_code).unwrap();
+    #[cfg(target_vendor="apple")]
+    println!("cargo::rustc-link-arg-cdylib=-Wl,-install_name,@rpath/lib{crate_name}.dylib");
+    #[cfg(all(unix, not(target_vendor="apple")))]
+    println!("cargo::rustc-link-arg-cdylib=-Wl,-soname,lib{crate_name}.so");
+    println!("cargo:rustc-env=BP3D_OS_MODULE_MAIN={}", path.display());
 }
