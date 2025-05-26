@@ -72,8 +72,12 @@ impl Module {
     /// contains any constructor which causes UB then this function causes UB.
     pub unsafe fn load(path: impl AsRef<Path>, metadata: HashMap<String, String>) -> super::Result<Self> {
         let path = CString::new(path.as_ref().as_os_str().as_bytes()).map_err(|_| Error::Null)?;
+        let handle = dlopen(path.as_ptr(), RTLD_LAZY);
+        if handle.is_null() {
+            return Err(Error::Io(std::io::Error::last_os_error()));
+        }
         Ok(Module{
-            handle: dlopen(path.as_ptr(), RTLD_LAZY),
+            handle,
             metadata
         })
     }
