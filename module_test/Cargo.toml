@@ -1,4 +1,5 @@
 [workspace]
 members = [
-    "test_mod"
-, "testbin"]
+    "test_mod",
+    "testbin"
+]

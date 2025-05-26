@@ -16,6 +16,7 @@ categories = ["os"]
 
 # Normal dependencies
 time = { version = "0.3.37", optional = true }
+bp3d-util = { version = "2.2.0", features = [], optional = true }
 
 # Apple and BSD
 [target.'cfg(not(windows))'.dependencies]
@@ -36,9 +37,6 @@ zbus = { version = "5.7.1", optional = true }
 [target.'cfg(all(not(any(target_vendor = "apple", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd")), any(target_arch = "x86", target_arch = "x86_64")))'.dependencies]
 raw-cpuid = { version = "11.0.1", optional = true }
 
-[target.'cfg(unix)'.dependencies]
-bp3d-util = { version = "2.2.0", features = [], optional = true }
-
 [features]
 dirs = ["objc", "objc-foundation", "windows-sys/Win32_UI_Shell", "windows-sys/Win32_Foundation", "windows-sys/Win32_System_Com"]
 open = ["fs", "zbus", "windows-sys/Win32_UI_Shell", "windows-sys/Win32_Foundation", "windows-sys/Win32_UI_WindowsAndMessaging", "objc"]
@@ -46,7 +44,7 @@ fs = ["windows-sys/Win32_Storage_FileSystem", "windows-sys/Win32_Foundation"]
 assets = ["libc", "objc", "objc-foundation", "windows-sys/Win32_System_LibraryLoader", "windows-sys/Win32_Foundation"]
 cpu-info = ["raw-cpuid"]
 time = ["time/std", "windows-sys/Win32_System_Time", "windows-sys/Win32_Foundation", "windows-sys/Win32_System_SystemServices", "bp3d-util/tzif", "libc"]
-module = ["libc", "rustc_version", "bp3d-util/simple-error"]
+module = ["libc", "rustc_version", "bp3d-util/simple-error", "windows-sys/Win32_System_LibraryLoader"]
 
 [package.metadata.docs.rs]
 all-features = true

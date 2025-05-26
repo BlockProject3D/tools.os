@@ -1,4 +1,4 @@
-// Copyright (c) 2023, BlockProject 3D
+// Copyright (c) 2025, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -48,13 +48,13 @@ pub fn open(url: &Url) -> Result {
         urlw.push(0x0000);
         let operation: PCWSTR = operation.as_ptr();
         let res = ShellExecuteW(
-            0,
+            std::ptr::null_mut(),
             operation,
             urlw.as_ptr(),
             std::ptr::null_mut(),
             std::ptr::null_mut(),
             SW_SHOW as _,
-        );
+        ) as usize; //Cast as usize as INT_PTR does not exist in Rust.
         match res > 32 {
             true => Ok(()),
             false => Err(Error::Io(std::io::Error::last_os_error())),

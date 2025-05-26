@@ -1,4 +1,4 @@
-// Copyright (c) 2023, BlockProject 3D
+// Copyright (c) 2025, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -36,7 +36,7 @@ pub fn get_exe_path() -> Option<PathBuf> {
     unsafe {
         //Try fast path with MAX_PATH which should work for most windows versions.
         let mut buf: [u16; MAX_PATH as usize] = [0; MAX_PATH as usize];
-        let res = GetModuleFileNameW(0, &mut buf as _, MAX_PATH);
+        let res = GetModuleFileNameW(std::ptr::null_mut(), &mut buf as _, MAX_PATH);
         if res == 0 {
             return None; //System error.
         } else if res == MAX_PATH {
@@ -49,7 +49,7 @@ pub fn get_exe_path() -> Option<PathBuf> {
                     //Start allocating twice buffer size.
                     let mut v = Vec::with_capacity(len);
                     //Attempt reading module file name again.
-                    let res = GetModuleFileNameW(0, v.as_mut_ptr(), len as u32);
+                    let res = GetModuleFileNameW(std::ptr::null_mut(), v.as_mut_ptr(), len as u32);
                     if res == 0 {
                         return None; //System error.
                     } else if res == len as u32 {
