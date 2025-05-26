@@ -28,9 +28,9 @@
 
 //! This module describes possible errors when attempting to load modules.
 
+use bp3d_util::simple_error;
 use std::fmt::{Display, Formatter};
 use std::str::Utf8Error;
-use bp3d_util::simple_error;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 /// Describes an incompatible RUSTC version when attempting to load Rust based modules.
@@ -39,12 +39,16 @@ pub struct IncompatibleRustc {
     pub expected: &'static str,
 
     /// The RUSTC version stored in the module which failed to load.
-    pub actual: String
+    pub actual: String,
 }
 
 impl Display for IncompatibleRustc {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "expected version {}, got version {}", self.expected, self.actual)
+        write!(
+            f,
+            "expected version {}, got version {}",
+            self.expected, self.actual
+        )
     }
 }
 
@@ -59,12 +63,16 @@ pub struct IncompatibleDependency {
     pub actual_version: String,
 
     /// The version of the dependency used by this [ModuleLoader](super::ModuleLoader).
-    pub expected_version: String
+    pub expected_version: String,
 }
 
 impl Display for IncompatibleDependency {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "expected version {}, got version {} for dependency '{}'", self.expected_version, self.actual_version, self.name)
+        write!(
+            f,
+            "expected version {}, got version {} for dependency '{}'",
+            self.expected_version, self.actual_version, self.name
+        )
     }
 }
 

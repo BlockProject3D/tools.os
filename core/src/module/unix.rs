@@ -26,14 +26,14 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::module::error::Error;
+use crate::module::symbol::Symbol;
+use libc::{dlclose, dlopen, dlsym, RTLD_LAZY};
 use std::collections::HashMap;
 use std::ffi::{c_void, CString};
 use std::fmt::{Debug, Display, Formatter};
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
-use libc::{dlclose, dlopen, dlsym, RTLD_LAZY};
-use crate::module::error::Error;
-use crate::module::symbol::Symbol;
 
 /// The extension of a module.
 #[cfg(target_vendor = "apple")]
@@ -47,7 +47,7 @@ pub const MODULE_EXT: &str = "so";
 #[derive(Debug)]
 pub struct Module {
     handle: *mut c_void,
-    metadata: HashMap<String, String>
+    metadata: HashMap<String, String>,
 }
 
 impl Display for Module {
@@ -70,16 +70,16 @@ impl Module {
     ///
     /// This function is unsafe as it assumes the module to be loaded is trusted code. If the module
     /// contains any constructor which causes UB then this function causes UB.
-    pub unsafe fn load(path: impl AsRef<Path>, metadata: HashMap<String, String>) -> super::Result<Self> {
+    pub unsafe fn load(
+        path: impl AsRef<Path>,
+        metadata: HashMap<String, String>,
+    ) -> super::Result<Self> {
         let path = CString::new(path.as_ref().as_os_str().as_bytes()).map_err(|_| Error::Null)?;
         let handle = dlopen(path.as_ptr(), RTLD_LAZY);
         if handle.is_null() {
             return Err(Error::Io(std::io::Error::last_os_error()));
         }
-        Ok(Module{
-            handle,
-            metadata
-        })
+        Ok(Module { handle, metadata })
     }
 
     /// Gets a metadata key by its name.

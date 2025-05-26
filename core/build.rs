@@ -27,6 +27,9 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 fn main() {
-    #[cfg(feature="module")]
-    println!("cargo:rustc-env=RUSTC_VERSION={}", rustc_version::version().unwrap());
+    #[cfg(feature = "module")]
+    println!(
+        "cargo:rustc-env=RUSTC_VERSION={}",
+        rustc_version::version().unwrap()
+    );
 }

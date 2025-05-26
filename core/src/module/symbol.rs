@@ -56,7 +56,7 @@ impl<T> Symbol<T> {
     }
 }
 
-impl<T, R> Symbol<extern "C" fn (T) -> R> {
+impl<T, R> Symbol<extern "C" fn(T) -> R> {
     /// Calls this symbol if this symbol is a function.
     ///
     /// # Arguments
@@ -70,7 +70,7 @@ impl<T, R> Symbol<extern "C" fn (T) -> R> {
     }
 }
 
-impl<T, T1, R> Symbol<extern "C" fn (T, T1) -> R> {
+impl<T, T1, R> Symbol<extern "C" fn(T, T1) -> R> {
     /// Calls this symbol if this symbol is a function.
     ///
     /// # Arguments
@@ -84,7 +84,7 @@ impl<T, T1, R> Symbol<extern "C" fn (T, T1) -> R> {
     }
 }
 
-impl<T, T1, T2, R> Symbol<extern "C" fn (T, T1, T2) -> R> {
+impl<T, T1, T2, R> Symbol<extern "C" fn(T, T1, T2) -> R> {
     /// Calls this symbol if this symbol is a function.
     ///
     /// # Arguments
@@ -98,7 +98,7 @@ impl<T, T1, T2, R> Symbol<extern "C" fn (T, T1, T2) -> R> {
     }
 }
 
-impl<R> Symbol<extern "C" fn () -> R> {
+impl<R> Symbol<extern "C" fn() -> R> {
     /// Calls this symbol if this symbol is a function.
     ///
     /// returns: R
