@@ -26,6 +26,8 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//! This module describes possible errors when attempting to load modules.
+
 use std::fmt::{Display, Formatter};
 use std::str::Utf8Error;
 use bp3d_util::simple_error;
