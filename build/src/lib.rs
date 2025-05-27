@@ -85,6 +85,7 @@ impl ModuleMain {
 "
         );
         self.rust_code += &rust_code;
+        println!("cargo::rustc-link-arg=-Wl,-U,BP3D_OS_MODULE_{crate_name_upper}_{func_name_upper}");
         self
     }
 
