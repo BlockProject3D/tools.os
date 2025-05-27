@@ -93,7 +93,7 @@ impl Library {
     /// incompatible types. If this condition is not maintained then this function is UB.
     pub unsafe fn load_symbol<T>(&self, name: impl AsRef<str>) -> super::Result<Option<Symbol<T>>> {
         let name = CString::new(name.as_ref().as_bytes()).map_err(|_| Error::Null)?;
-        let sym = GetProcAddress(self.handle, name.as_ptr() as _);
+        let sym = GetProcAddress(self.0, name.as_ptr() as _);
         if sym.is_none() {
             Ok(None)
         } else {
@@ -108,6 +108,6 @@ impl Library {
     /// This function assumes no Symbols from this module are currently in scope, if not this
     /// function is UB.
     pub unsafe fn unload(self) {
-        FreeLibrary(self.handle);
+        FreeLibrary(self.0);
     }
 }
