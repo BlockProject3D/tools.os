@@ -26,60 +26,49 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::module::error::Error;
+use std::collections::HashMap;
+use std::fmt::{Debug, Display, Formatter};
 use crate::module::symbol::Symbol;
-use std::ffi::CString;
-use std::fmt::Debug;
-use std::os::windows::ffi::OsStrExt;
-use std::path::Path;
-use windows_sys::Win32::Foundation::{FreeLibrary, HMODULE};
-use windows_sys::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryW, GetModuleHandleW};
-
-/// The extension of a module.
-pub const MODULE_EXT: &str = "dll";
+use crate::module::Library;
 
 /// This represents a module shared object.
 #[derive(Debug)]
-pub struct Library(HMODULE);
+pub struct Module {
+    lib: Library,
+    metadata: HashMap<String, String>,
+}
 
-impl Library {
-    /// Attempts to open a handle to the current running program.
-    pub fn open_self() -> super::Result<Self> {
-        let handle = unsafe { GetModuleHandleW(std::ptr::null()) };
-        if handle.is_null() {
-            return Err(Error::Io(std::io::Error::last_os_error()));
-        }
-        Ok(Library(handle))
+impl Display for Module {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.metadata.fmt(f)
     }
+}
 
-    /// Loads a dynamic library from the given path.
+impl Module {
+    /// Constructs a new [Module] from an existing [Library] handle.
     ///
     /// # Arguments
     ///
-    /// * `path`: full path to the shared library including extension.
+    /// * `lib`: the library to wrap.
+    /// * `metadata`: module metadata.
     ///
-    /// returns: Result<Module, Error>
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe as it assumes the module to be loaded is trusted code. If the module
-    /// contains any constructor which causes UB then this function causes UB. Additionally, it is
-    /// UB to load a module with a DllMain function inside, if you absolutely need a DllMain function
-    /// use `bp3d_os_module_<name>_open` and `bp3d_os_module_<name>_close`.
-    pub unsafe fn load(path: impl AsRef<Path>) -> super::Result<Self> {
-        let mut path = path.as_ref().as_os_str().encode_wide().collect::<Vec<_>>();
-        if path.iter().any(|v| *v == 0x0) {
-            return Err(Error::Null);
-        }
-        path.push(0);
-        let handle = LoadLibraryW(path.as_ptr());
-        if handle.is_null() {
-            return Err(Error::Io(std::io::Error::last_os_error()));
-        }
-        Ok(Library(handle))
+    /// returns: Module
+    pub fn new(lib: Library, metadata: HashMap<String, String>) -> Self {
+        Module { lib, metadata }
     }
 
-    /// Attempts to load the given symbol from this library.
+    /// Gets a metadata key by its name.
+    ///
+    /// # Arguments
+    ///
+    /// * `key`: the key to read from the metadata (ex: NAME).
+    ///
+    /// returns: Option<&str>
+    pub fn get_metadata_key(&self, key: &str) -> Option<&str> {
+        self.metadata.get(key).map(|s| s.as_str())
+    }
+
+    /// Attempts to load the given symbol from this module.
     ///
     /// # Arguments
     ///
@@ -92,13 +81,7 @@ impl Library {
     /// This function assumes the returned symbol is of the correct type and does not use any ABI
     /// incompatible types. If this condition is not maintained then this function is UB.
     pub unsafe fn load_symbol<T>(&self, name: impl AsRef<str>) -> super::Result<Option<Symbol<T>>> {
-        let name = CString::new(name.as_ref().as_bytes()).map_err(|_| Error::Null)?;
-        let sym = GetProcAddress(self.handle, name.as_ptr() as _);
-        if sym.is_none() {
-            Ok(None)
-        } else {
-            Ok(Some(Symbol::from_raw(std::mem::transmute(sym))))
-        }
+        self.lib.load_symbol(name)
     }
 
     /// Unloads the current module.
@@ -108,6 +91,6 @@ impl Library {
     /// This function assumes no Symbols from this module are currently in scope, if not this
     /// function is UB.
     pub unsafe fn unload(self) {
-        FreeLibrary(self.handle);
+        self.lib.unload();
     }
 }

@@ -27,9 +27,10 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::module::error::{Error, IncompatibleDependency, IncompatibleRustc};
-use crate::module::Module;
+use crate::module::{Library, Module};
 use crate::module::{MODULE_EXT, RUSTC_VERSION};
 use std::collections::HashMap;
+use std::ffi::{c_char, CStr};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -40,9 +41,26 @@ pub struct ModuleLoader {
     paths: Vec<PathBuf>,
     modules: HashMap<String, Module>,
     deps: HashMap<String, String>,
+    this: Option<Library>
 }
 
 const MOD_HEADER: &[u8] = b"BP3D_OS_MODULE|";
+
+fn parse_metadata(bytes: &[u8]) -> super::Result<HashMap<String, String>> {
+    // Remove terminator NULL.
+    let bytes = &bytes[..bytes.len() - 1];
+    let mut map = HashMap::new();
+    let data = std::str::from_utf8(bytes).map_err(Error::InvalidUtf8)?;
+    let mut vars = data.split("|");
+    vars.next();
+    for var in vars {
+        let mut var = var.split("=");
+        let key = var.next().ok_or(Error::InvalidMetadata)?;
+        let value = var.next().ok_or(Error::InvalidMetadata)?;
+        map.insert(key.into(), value.into());
+    }
+    Ok(map)
+}
 
 fn load_metadata(path: &Path) -> super::Result<HashMap<String, String>> {
     let mut file = File::open(path).map_err(Error::Io)?;
@@ -56,20 +74,8 @@ fn load_metadata(path: &Path) -> super::Result<HashMap<String, String>> {
             v.extend_from_slice(&inner[..end + 1]);
             if v[v.len() - 1] == 0 {
                 if v.starts_with(MOD_HEADER) {
-                    // Remove terminator NULL.
-                    let v = &v[..v.len() - 1];
                     // We found the module metadata.
-                    let mut map = HashMap::new();
-                    let data = std::str::from_utf8(&v).map_err(Error::InvalidUtf8)?;
-                    let mut vars = data.split("|");
-                    vars.next();
-                    for var in vars {
-                        let mut var = var.split("=");
-                        let key = var.next().ok_or(Error::InvalidMetadata)?;
-                        let value = var.next().ok_or(Error::InvalidMetadata)?;
-                        map.insert(key.into(), value.into());
-                    }
-                    return Ok(map);
+                    return parse_metadata(&v);
                 }
                 v.clear();
                 slice = &inner[end + 1..];
@@ -126,12 +132,17 @@ unsafe fn load_lib(
             }
         }
     }
-    let module = Module::load(path, metadata)?;
+    let module = Module::new(Library::load(path)?, metadata);
+    module_open(name, &module)?;
+    Ok(module)
+}
+
+unsafe fn module_open(name: &str, m: &Module) -> super::Result<()> {
     let main_name = format!("bp3d_os_module_{}_open", name);
-    if let Some(main) = module.load_symbol::<extern "C" fn()>(main_name)? {
+    if let Some(main) = m.load_symbol::<extern "C" fn()>(main_name)? {
         main.call();
     }
-    Ok(module)
+    Ok(())
 }
 
 impl ModuleLoader {
@@ -140,7 +151,37 @@ impl ModuleLoader {
         Self::default()
     }
 
-    /// Attempts to load a module from the specified path and name.
+    /// Attempts to load a module from the specified name which is statically built in the current
+    /// running software.
+    ///
+    /// # Arguments
+    ///
+    /// * `name`: the name of the module to be loaded.
+    ///
+    /// returns: Result<&Module, Error>
+    pub fn load_self(&mut self, name: &str) -> super::Result<&Module> {
+        let name = name.replace("-", "_");
+        if self.modules.contains_key(&name) {
+            unsafe { Ok(self.modules.get(&name).unwrap_unchecked()) }
+        } else {
+            if self.this.is_none() {
+                self.this = Some(Library::open_self()?);
+            }
+            let handle = unsafe { self.this.as_ref().unwrap_unchecked() };
+            let mod_const_name = format!("BP3D_OS_MODULE_{}", name.to_uppercase());
+            if let Some(sym) = unsafe { handle.load_symbol::<c_char>(mod_const_name) }? {
+                let bytes = unsafe { CStr::from_ptr(sym.as_ptr().offset(1)) }.to_bytes();
+                let metadata = parse_metadata(bytes)?;
+                let module = Module::new(Library::open_self()?, metadata);
+                unsafe { module_open(&name, &module) }?;
+                self.modules.insert(name.clone(), module);
+                return Ok(&self.modules[&name]);
+            }
+            Err(Error::NotFound(name.into()))
+        }
+    }
+
+    /// Attempts to load a module from the specified name.
     ///
     /// This function already does check for the version of rustc and dependencies for Rust based
     /// modules to ensure maximum ABI compatibility.
