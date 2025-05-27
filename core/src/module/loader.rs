@@ -87,12 +87,7 @@ fn load_metadata(path: &Path) -> super::Result<HashMap<String, String>> {
     Err(Error::MissingMetadata)
 }
 
-unsafe fn load_lib(
-    deps2: &mut HashMap<String, String>,
-    name: &str,
-    path: &Path,
-) -> super::Result<Module> {
-    let metadata = load_metadata(path)?;
+fn check_metadata(metadata: &HashMap<String, String>, deps2: &mut HashMap<String, String>) -> super::Result<()> {
     if metadata.get("TYPE").ok_or(Error::InvalidMetadata)? == "RUST" {
         // This symbol is optional and will not exist on C/C++ modules, only on Rust based modules.
         // The main reason the rustc version is checked on Rust modules is for interop with user
@@ -132,6 +127,16 @@ unsafe fn load_lib(
             }
         }
     }
+    Ok(())
+}
+
+unsafe fn load_lib(
+    deps2: &mut HashMap<String, String>,
+    name: &str,
+    path: &Path,
+) -> super::Result<Module> {
+    let metadata = load_metadata(path)?;
+    check_metadata(&metadata, deps2)?;
     let module = Module::new(Library::load(path)?, metadata);
     module_open(name, &module)?;
     Ok(module)
@@ -169,9 +174,10 @@ impl ModuleLoader {
             }
             let handle = unsafe { self.this.as_ref().unwrap_unchecked() };
             let mod_const_name = format!("BP3D_OS_MODULE_{}", name.to_uppercase());
-            if let Some(sym) = unsafe { handle.load_symbol::<c_char>(mod_const_name) }? {
-                let bytes = unsafe { CStr::from_ptr(sym.as_ptr().offset(1)) }.to_bytes();
+            if let Some(sym) = unsafe { handle.load_symbol::<*const c_char>(mod_const_name) }? {
+                let bytes = unsafe { CStr::from_ptr((*sym.as_ptr()).offset(1)) }.to_bytes_with_nul();
                 let metadata = parse_metadata(bytes)?;
+                check_metadata(&metadata, &mut self.deps)?;
                 let module = Module::new(Library::open_self()?, metadata);
                 unsafe { module_open(&name, &module) }?;
                 self.modules.insert(name.clone(), module);
