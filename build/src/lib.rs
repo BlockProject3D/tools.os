@@ -61,6 +61,7 @@ impl ModuleMain {
         let rust_code = format!(
             r"
     #[unsafe(no_mangle)]
+    #[used]
     static mut {mod_const_name}: *const std::ffi::c_char = {data}.as_ptr() as _;
 "
         );
@@ -71,6 +72,20 @@ impl ModuleMain {
             out_path,
             crate_name,
         }
+    }
+
+    pub fn add_export(mut self, func_name: impl AsRef<str>) -> Self {
+        let crate_name_upper = self.crate_name.to_uppercase();
+        let func_name_upper = func_name.as_ref().to_uppercase();
+        let func_name = func_name.as_ref();
+        let rust_code = format!(
+            r"
+    #[used]
+    static mut BP3D_OS_MODULE_{crate_name_upper}_{func_name_upper}: *const std::ffi::c_void = {func_name} as _;
+"
+        );
+        self.rust_code += &rust_code;
+        self
     }
 
     pub fn add_open(mut self) -> Self {
@@ -85,7 +100,8 @@ impl ModuleMain {
 "
         );
         self.rust_code += &rust_code;
-        self
+        let motherfuckingrust = format!("bp3d_os_module_{crate_name}_open");
+        self.add_export(motherfuckingrust)
     }
 
     pub fn add_close(mut self) -> Self {
@@ -100,7 +116,8 @@ impl ModuleMain {
 "
         );
         self.rust_code += &rust_code;
-        self
+        let motherfuckingrust = format!("bp3d_os_module_{crate_name}_close");
+        self.add_export(motherfuckingrust)
     }
 
     pub fn build(self) {
