@@ -58,3 +58,11 @@ pub use self::windows::{Library, MODULE_EXT};
 pub use loader::ModuleLoader;
 
 pub use module::Module;
+
+/// Link the set of modules statically.
+///
+/// Note: the modules must be available as Cargo dependencies.
+#[macro_export]
+macro_rules! link_modules {
+    ($($module: ident),*) => { $(use $module;)* };
+}

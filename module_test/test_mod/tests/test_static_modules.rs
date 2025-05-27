@@ -27,11 +27,11 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use bp3d_os::module::ModuleLoader;
-use test_mod::add;
+
+bp3d_os::link_modules!(test_mod);
 
 #[test]
 fn test_static_modules() {
-    add(1, 2);
     let mut loader = ModuleLoader::new();
     println!("Running simple module load/unload test");
     loader.load_self("test-mod").unwrap();

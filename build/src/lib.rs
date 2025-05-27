@@ -94,6 +94,7 @@ impl ModuleMain {
         let rust_code = format!(
             r"
     #[unsafe(no_mangle)]
+    #[inline(never)]
     pub {motherfuckingrust} fn bp3d_os_module_{crate_name}_open() {{
         module_open();
     }}
@@ -110,6 +111,7 @@ impl ModuleMain {
         let rust_code = format!(
             r"
     #[unsafe(no_mangle)]
+    #[inline(never)]
     pub {motherfuckingrust} fn bp3d_os_module_{crate_name}_close() {{
         module_close();
     }}
