@@ -34,14 +34,14 @@ use std::ffi::{c_char, CStr};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use crate::module::library::OS_EXT;
+use crate::module::library::{Library, OS_EXT};
 use crate::module::library::types::OsLibrary;
 
 /// Represents a module loader which can support loading multiple related modules.
 #[derive(Default)]
 pub struct ModuleLoader {
     paths: Vec<PathBuf>,
-    modules: HashMap<String, Module>,
+    modules: HashMap<String, Module<OsLibrary>>,
     deps: HashMap<String, String>,
     this: Option<OsLibrary>
 }
@@ -136,7 +136,7 @@ unsafe fn load_lib(
     deps2: &mut HashMap<String, String>,
     name: &str,
     path: &Path,
-) -> super::Result<Module> {
+) -> super::Result<Module<OsLibrary>> {
     let metadata = load_metadata(path)?;
     check_metadata(&metadata, deps2)?;
     let module = Module::new(OsLibrary::load(path)?, metadata);
@@ -144,7 +144,7 @@ unsafe fn load_lib(
     Ok(module)
 }
 
-unsafe fn module_open(name: &str, m: &Module) -> super::Result<()> {
+unsafe fn module_open<L: Library>(name: &str, m: &Module<L>) -> super::Result<()> {
     let main_name = format!("bp3d_os_module_{}_open", name);
     if let Some(main) = m.load_symbol::<extern "C" fn()>(main_name)? {
         main.call();
@@ -166,7 +166,7 @@ impl ModuleLoader {
     /// * `name`: the name of the module to be loaded.
     ///
     /// returns: Result<&Module, Error>
-    pub fn load_self(&mut self, name: &str) -> super::Result<&Module> {
+    pub fn load_self(&mut self, name: &str) -> super::Result<&Module<OsLibrary>> {
         let name = name.replace("-", "_");
         if self.modules.contains_key(&name) {
             unsafe { Ok(self.modules.get(&name).unwrap_unchecked()) }
@@ -209,7 +209,7 @@ impl ModuleLoader {
     /// if not, this function is UB. Additionally, if some dependency used in public facing APIs
     /// for the module are not added with [add_public_dependency](Self::add_public_dependency),
     /// this is also UB.
-    pub unsafe fn load(&mut self, name: &str) -> super::Result<&Module> {
+    pub unsafe fn load(&mut self, name: &str) -> super::Result<&Module<OsLibrary>> {
         let name = name.replace("-", "_");
         if self.modules.contains_key(&name) {
             Ok(self.modules.get(&name).unwrap_unchecked())

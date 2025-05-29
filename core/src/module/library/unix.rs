@@ -78,20 +78,10 @@ impl Library {
         }
         Ok(Library(handle))
     }
+}
 
-    /// Attempts to load the given symbol from this library.
-    ///
-    /// # Arguments
-    ///
-    /// * `name`: the name of the symbol.
-    ///
-    /// returns: Result<Symbol<T>, Error>
-    ///
-    /// # Safety
-    ///
-    /// This function assumes the returned symbol is of the correct type and does not use any ABI
-    /// incompatible types. If this condition is not maintained then this function is UB.
-    pub unsafe fn load_symbol<T>(&self, name: impl AsRef<str>) -> module::Result<Option<Symbol<T>>> {
+impl super::Library for Library {
+    unsafe fn load_symbol<T>(&self, name: impl AsRef<str>) -> module::Result<Option<Symbol<T>>> {
         let name = CString::new(name.as_ref().as_bytes()).map_err(|_| Error::Null)?;
         let sym = dlsym(self.0, name.as_ptr());
         if sym.is_null() {
@@ -101,13 +91,7 @@ impl Library {
         }
     }
 
-    /// Unloads the current module.
-    ///
-    /// # Safety
-    ///
-    /// This function assumes no Symbols from this module are currently in scope, if not this
-    /// function is UB.
-    pub unsafe fn unload(self) {
+    unsafe fn unload(self) {
         dlclose(self.0);
     }
 }

@@ -28,23 +28,23 @@
 
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
-use crate::module::library::types::OsLibrary;
+use crate::module::library::Library;
 use crate::module::library::types::Symbol;
 
 /// This represents a module shared object.
 #[derive(Debug)]
-pub struct Module {
-    lib: OsLibrary,
+pub struct Module<L> {
+    lib: L,
     metadata: HashMap<String, String>,
 }
 
-impl Display for Module {
+impl<L> Display for Module<L> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.metadata.fmt(f)
     }
 }
 
-impl Module {
+impl<L: Library> Module<L> {
     /// Constructs a new [Module] from an existing [Library] handle.
     ///
     /// # Arguments
@@ -53,7 +53,7 @@ impl Module {
     /// * `metadata`: module metadata.
     ///
     /// returns: Module
-    pub fn new(lib: OsLibrary, metadata: HashMap<String, String>) -> Self {
+    pub fn new(lib: L, metadata: HashMap<String, String>) -> Self {
         Module { lib, metadata }
     }
 
