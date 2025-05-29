@@ -26,6 +26,9 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// Needed until https://github.com/rust-lang/rust/pull/140872 gets merged in
+//#![feature(used_with_arg)]
+
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
 }
@@ -41,10 +44,12 @@ mod tests {
     }
 }
 
+#[inline(never)]
 fn module_open() {
     println!("module_open");
 }
 
+#[inline(never)]
 fn module_close() {
     println!("module_close");
 }

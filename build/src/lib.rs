@@ -34,6 +34,7 @@ pub struct ModuleMain {
     rust_code: String,
     out_path: PathBuf,
     crate_name: String,
+    virtual_lib: String
 }
 
 impl ModuleMain {
@@ -58,6 +59,7 @@ impl ModuleMain {
             "\"\0BP3D_OS_MODULE|TYPE=RUST|NAME={}|VERSION={}|RUSTC={}|DEPS={}\0\"",
             crate_name, crate_version, rustc_version, deps_list
         );
+        // #[used(linker)] on linux builds until https://github.com/rust-lang/rust/pull/140872 gets merged
         let rust_code = format!(
             r"
     #[unsafe(no_mangle)]
@@ -65,27 +67,24 @@ impl ModuleMain {
     static mut {mod_const_name}: *const std::ffi::c_char = {data}.as_ptr() as _;
 "
         );
+        let virtual_lib = format!("
+    #[used]
+    static mut {mod_const_name}_VIRTUAL: bp3d_os::module::library::types::VirtualLibrary = bp3d_os::module::library::types::VirtualLibrary::new(\"{crate_name}\", &[
+        (\"{mod_const_name}\", unsafe {{ {mod_const_name} as _ }})");
         let out_path =
             PathBuf::from(std::env::var_os("OUT_DIR").unwrap()).join("bp3d_os_module.rs");
         Self {
             rust_code,
             out_path,
             crate_name,
+            virtual_lib
         }
     }
 
     pub fn add_export(mut self, func_name: impl AsRef<str>) -> Self {
-        let crate_name_upper = self.crate_name.to_uppercase();
         let func_name_upper = func_name.as_ref().to_uppercase();
         let func_name = func_name.as_ref();
-        let rust_code = format!(
-            r"
-    #[used]
-    static mut BP3D_OS_MODULE_{crate_name_upper}_{func_name_upper}: *const std::ffi::c_void = {func_name} as _;
-"
-        );
-        self.rust_code += &rust_code;
-        println!("cargo::rustc-link-arg=-Wl,-U,BP3D_OS_MODULE_{crate_name_upper}_{func_name_upper}");
+        self.virtual_lib += &format!(",\n        (\"{func_name_upper}\", {func_name} as _)");
         self
     }
 
@@ -123,13 +122,17 @@ impl ModuleMain {
         self.add_export(motherfuckingrust)
     }
 
-    pub fn build(self) {
+    pub fn build(mut self) {
         let crate_name = self.crate_name;
+        self.virtual_lib += "\n    ]);";
+        self.rust_code += &self.virtual_lib;
         std::fs::write(&self.out_path, self.rust_code).unwrap();
         #[cfg(target_vendor = "apple")]
         println!("cargo::rustc-link-arg-cdylib=-Wl,-install_name,@rpath/lib{crate_name}.dylib");
         #[cfg(all(unix, not(target_vendor = "apple")))]
         println!("cargo::rustc-link-arg-cdylib=-Wl,-soname,lib{crate_name}.so");
+        #[cfg(all(unix, not(target_vendor = "apple")))]
+        println!("cargo::rustc-link-arg=-Wl,--export-dynamic");
         println!(
             "cargo:rustc-env=BP3D_OS_MODULE_MAIN={}",
             self.out_path.display()
