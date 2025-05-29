@@ -28,13 +28,13 @@
 
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
-use crate::module::symbol::Symbol;
-use crate::module::Library;
+use crate::module::library::types::OsLibrary;
+use crate::module::library::types::Symbol;
 
 /// This represents a module shared object.
 #[derive(Debug)]
 pub struct Module {
-    lib: Library,
+    lib: OsLibrary,
     metadata: HashMap<String, String>,
 }
 
@@ -53,7 +53,7 @@ impl Module {
     /// * `metadata`: module metadata.
     ///
     /// returns: Module
-    pub fn new(lib: Library, metadata: HashMap<String, String>) -> Self {
+    pub fn new(lib: OsLibrary, metadata: HashMap<String, String>) -> Self {
         Module { lib, metadata }
     }
 

@@ -27,13 +27,15 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::module::error::{Error, IncompatibleDependency, IncompatibleRustc};
-use crate::module::{Library, Module};
-use crate::module::{MODULE_EXT, RUSTC_VERSION};
+use crate::module::Module;
+use crate::module::RUSTC_VERSION;
 use std::collections::HashMap;
 use std::ffi::{c_char, CStr};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use crate::module::library::OS_EXT;
+use crate::module::library::types::OsLibrary;
 
 /// Represents a module loader which can support loading multiple related modules.
 #[derive(Default)]
@@ -41,7 +43,7 @@ pub struct ModuleLoader {
     paths: Vec<PathBuf>,
     modules: HashMap<String, Module>,
     deps: HashMap<String, String>,
-    this: Option<Library>
+    this: Option<OsLibrary>
 }
 
 const MOD_HEADER: &[u8] = b"BP3D_OS_MODULE|";
@@ -137,7 +139,7 @@ unsafe fn load_lib(
 ) -> super::Result<Module> {
     let metadata = load_metadata(path)?;
     check_metadata(&metadata, deps2)?;
-    let module = Module::new(Library::load(path)?, metadata);
+    let module = Module::new(OsLibrary::load(path)?, metadata);
     module_open(name, &module)?;
     Ok(module)
 }
@@ -170,7 +172,7 @@ impl ModuleLoader {
             unsafe { Ok(self.modules.get(&name).unwrap_unchecked()) }
         } else {
             if self.this.is_none() {
-                self.this = Some(Library::open_self()?);
+                self.this = Some(OsLibrary::open_self()?);
             }
             let handle = unsafe { self.this.as_ref().unwrap_unchecked() };
             let mod_const_name = format!("BP3D_OS_MODULE_{}", name.to_uppercase());
@@ -178,7 +180,7 @@ impl ModuleLoader {
                 let bytes = unsafe { CStr::from_ptr((*sym.as_ptr()).offset(1)) }.to_bytes_with_nul();
                 let metadata = parse_metadata(bytes)?;
                 check_metadata(&metadata, &mut self.deps)?;
-                let module = Module::new(Library::open_self()?, metadata);
+                let module = Module::new(OsLibrary::open_self()?, metadata);
                 unsafe { module_open(&name, &module) }?;
                 self.modules.insert(name.clone(), module);
                 return Ok(&self.modules[&name]);
@@ -212,8 +214,8 @@ impl ModuleLoader {
         if self.modules.contains_key(&name) {
             Ok(self.modules.get(&name).unwrap_unchecked())
         } else {
-            let name2 = format!("{}.{}", name, MODULE_EXT);
-            let name3 = format!("lib{}.{}", name, MODULE_EXT);
+            let name2 = format!("{}.{}", name, OS_EXT);
+            let name3 = format!("lib{}.{}", name, OS_EXT);
             for path in self.paths.iter() {
                 let search = path.join(&name2);
                 let search2 = path.join(&name3);

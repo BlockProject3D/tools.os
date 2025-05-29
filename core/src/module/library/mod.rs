@@ -26,30 +26,17 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! This module provides tools to load symbols from external libraries/plugins.
+#[cfg(unix)]
+mod unix;
+#[cfg(windows)]
+mod windows;
+mod symbol;
+pub mod types;
 
-/// The rustc version being used (note this version includes the null terminator for simplified
-/// generation.
-pub const RUSTC_VERSION: &str = env!("RUSTC_VERSION");
+/// The extension of a module.
+#[cfg(unix)]
+pub const OS_EXT: &str = unix::EXT;
 
-/// The type of result when managing module.
-pub type Result<T> = std::result::Result<T, error::Error>;
-
-pub mod error;
-
-mod loader;
-
-mod module;
-mod library;
-
-pub use loader::ModuleLoader;
-
-pub use module::Module;
-
-/// Link the set of modules statically.
-///
-/// Note: the modules must be available as Cargo dependencies.
-#[macro_export]
-macro_rules! link_modules {
-    ($($module: ident),*) => { $(use $module;)* };
-}
+/// The extension of a module.
+#[cfg(windows)]
+pub const OS_EXT: &str = windows::EXT;

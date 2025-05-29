@@ -27,30 +27,25 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::module::error::Error;
-use crate::module::symbol::Symbol;
-use libc::{dlclose, dlopen, dlsym, RTLD_LAZY};
-use std::ffi::{c_void, CString};
+use crate::module::library::symbol::Symbol;
+use std::ffi::CString;
 use std::fmt::Debug;
-use std::os::unix::ffi::OsStrExt;
+use std::os::windows::ffi::OsStrExt;
 use std::path::Path;
+use windows_sys::Win32::Foundation::{FreeLibrary, HMODULE};
+use windows_sys::Win32::System::LibraryLoader::{GetModuleHandleW, GetProcAddress, LoadLibraryW};
+use crate::module;
 
-/// The extension of a module.
-#[cfg(target_vendor = "apple")]
-pub const MODULE_EXT: &str = "dylib";
-
-/// The extension of a module.
-#[cfg(all(unix, not(target_vendor = "apple")))]
-pub const MODULE_EXT: &str = "so";
+pub const EXT: &str = "dll";
 
 /// This represents a module shared object.
 #[derive(Debug)]
-#[repr(transparent)]
-pub struct Library(*mut c_void);
+pub struct Library(HMODULE);
 
 impl Library {
-    /// Attempts to open a handle to the current running program. 
-    pub fn open_self() -> super::Result<Self> {
-        let handle = unsafe { dlopen(std::ptr::null(), RTLD_LAZY) };
+    /// Attempts to open a handle to the current running program.
+    pub fn open_self() -> module::Result<Self> {
+        let handle = unsafe { GetModuleHandleW(std::ptr::null()) };
         if handle.is_null() {
             return Err(Error::Io(std::io::Error::last_os_error()));
         }
@@ -68,12 +63,16 @@ impl Library {
     /// # Safety
     ///
     /// This function is unsafe as it assumes the module to be loaded is trusted code. If the module
-    /// contains any constructor which causes UB then this function causes UB.
-    pub unsafe fn load(
-        path: impl AsRef<Path>,
-    ) -> super::Result<Self> {
-        let path = CString::new(path.as_ref().as_os_str().as_bytes()).map_err(|_| Error::Null)?;
-        let handle = dlopen(path.as_ptr(), RTLD_LAZY);
+    /// contains any constructor which causes UB then this function causes UB. Additionally, it is
+    /// UB to load a module with a DllMain function inside, if you absolutely need a DllMain function
+    /// use `bp3d_os_module_<name>_open` and `bp3d_os_module_<name>_close`.
+    pub unsafe fn load(path: impl AsRef<Path>) -> module::Result<Self> {
+        let mut path = path.as_ref().as_os_str().encode_wide().collect::<Vec<_>>();
+        if path.iter().any(|v| *v == 0x0) {
+            return Err(Error::Null);
+        }
+        path.push(0);
+        let handle = LoadLibraryW(path.as_ptr());
         if handle.is_null() {
             return Err(Error::Io(std::io::Error::last_os_error()));
         }
@@ -92,13 +91,13 @@ impl Library {
     ///
     /// This function assumes the returned symbol is of the correct type and does not use any ABI
     /// incompatible types. If this condition is not maintained then this function is UB.
-    pub unsafe fn load_symbol<T>(&self, name: impl AsRef<str>) -> super::Result<Option<Symbol<T>>> {
+    pub unsafe fn load_symbol<T>(&self, name: impl AsRef<str>) -> module::Result<Option<Symbol<T>>> {
         let name = CString::new(name.as_ref().as_bytes()).map_err(|_| Error::Null)?;
-        let sym = dlsym(self.0, name.as_ptr());
-        if sym.is_null() {
+        let sym = GetProcAddress(self.0, name.as_ptr() as _);
+        if sym.is_none() {
             Ok(None)
         } else {
-            Ok(Some(Symbol::from_raw(sym)))
+            Ok(Some(Symbol::from_raw(std::mem::transmute(sym))))
         }
     }
 
@@ -109,6 +108,6 @@ impl Library {
     /// This function assumes no Symbols from this module are currently in scope, if not this
     /// function is UB.
     pub unsafe fn unload(self) {
-        dlclose(self.0);
+        FreeLibrary(self.0);
     }
 }
