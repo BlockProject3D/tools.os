@@ -26,6 +26,8 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+//! This module contains all possible types of libraries supported by this tool.
+
 pub use super::symbol::Symbol;
 
 #[cfg(unix)]
@@ -33,3 +35,5 @@ pub use super::unix::Library as OsLibrary;
 
 #[cfg(windows)]
 pub use super::windows::Library as OsLibrary;
+
+pub use super::r#virtual::VirtualLibrary;

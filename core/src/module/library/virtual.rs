@@ -26,45 +26,44 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! This module contains various library types.
+use std::ffi::c_void;
+use crate::module::error::Error;
+use crate::module::library::Library;
+use crate::module::library::symbol::Symbol;
 
-#[cfg(unix)]
-mod unix;
-#[cfg(windows)]
-mod windows;
-mod symbol;
-pub mod types;
-mod r#virtual;
+/// This represents a virtual library to be used in full statically-linked applications.
+pub struct VirtualLibrary {
+    name: &'static str,
+    symbols: &'static [(&'static str, *const c_void)]
+}
 
-/// The extension of a module.
-#[cfg(unix)]
-pub const OS_EXT: &str = unix::EXT;
+impl VirtualLibrary {
+    /// Creates a new [VirtualLibrary] from a name and an array of symbols.
+    ///
+    /// This function is const to allow statics declaration from build tool.
+    pub const fn new(name: &'static str, symbols: &'static [(&'static str, *const c_void)]) -> Self {
+        Self { name, symbols }
+    }
 
-/// The extension of a module.
-#[cfg(windows)]
-pub const OS_EXT: &str = windows::EXT;
+    /// Returns the name of this [VirtualLibrary].
+    pub fn name(&self) -> &'static str {
+        self.name
+    }
+}
 
-/// Represents a library.
-pub trait Library {
-    /// Attempts to load the given symbol from this library.
-    ///
-    /// # Arguments
-    ///
-    /// * `name`: the name of the symbol.
-    ///
-    /// returns: Result<Symbol<T>, Error>
-    ///
-    /// # Safety
-    ///
-    /// This function assumes the returned symbol is of the correct type and does not use any ABI
-    /// incompatible types. If this condition is not maintained then this function is UB.
-    unsafe fn load_symbol<T>(&self, name: impl AsRef<str>) -> crate::module::Result<Option<types::Symbol<T>>>;
+impl Library for VirtualLibrary {
+    unsafe fn load_symbol<T>(&self, name: impl AsRef<str>) -> crate::module::Result<Option<Symbol<T>>> {
+        if name.as_ref().find('\0').is_some() {
+            return Err(Error::Null);
+        }
+        for (name, symbol) in self.symbols {
+            if name == name {
+                return Ok(Some(Symbol::from_raw(*symbol)))
+            }
+        }
+        Ok(None)
+    }
 
-    /// Unloads the current module.
-    ///
-    /// # Safety
-    ///
-    /// This function assumes no Symbols from this module are currently in scope, if not this
-    /// function is UB.
-    unsafe fn unload(self);
+    unsafe fn unload(self) {
+    }
 }

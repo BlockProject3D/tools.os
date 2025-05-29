@@ -38,7 +38,6 @@ use crate::module::library::{Library, OS_EXT};
 use crate::module::library::types::OsLibrary;
 
 /// Represents a module loader which can support loading multiple related modules.
-#[derive(Default)]
 pub struct ModuleLoader {
     paths: Vec<PathBuf>,
     modules: HashMap<String, Module<OsLibrary>>,
@@ -56,9 +55,9 @@ fn parse_metadata(bytes: &[u8]) -> super::Result<HashMap<String, String>> {
     let mut vars = data.split("|");
     vars.next();
     for var in vars {
-        let mut var = var.split("=");
-        let key = var.next().ok_or(Error::InvalidMetadata)?;
-        let value = var.next().ok_or(Error::InvalidMetadata)?;
+        let pos = var.find('=').ok_or(Error::InvalidMetadata)?;
+        let key = &var[..pos];
+        let value = &var[pos + 1..];
         map.insert(key.into(), value.into());
     }
     Ok(map)
@@ -113,12 +112,12 @@ fn check_metadata(metadata: &HashMap<String, String>, deps2: &mut HashMap<String
         if !deps.is_empty() {
             for dep in deps.split(",") {
                 let mut iter = dep.split("=");
-                let name = iter.next().ok_or(Error::InvalidDepFormat)?;
+                let name = iter.next().ok_or(Error::InvalidDepFormat)?.replace("-", "_");
                 let version = iter.next().ok_or(Error::InvalidDepFormat)?;
-                if let Some(expected_version) = deps2.get(name) {
+                if let Some(expected_version) = deps2.get(&name) {
                     if version != expected_version {
                         return Err(Error::IncompatibleDep(IncompatibleDependency {
-                            name: name.into(),
+                            name,
                             expected_version: expected_version.into(),
                             actual_version: version.into(),
                         }));
@@ -150,6 +149,19 @@ unsafe fn module_open<L: Library>(name: &str, m: &Module<L>) -> super::Result<()
         main.call();
     }
     Ok(())
+}
+
+impl Default for ModuleLoader {
+    fn default() -> Self {
+        let mut this = ModuleLoader {
+            paths: Default::default(),
+            modules: Default::default(),
+            deps: Default::default(),
+            this: None,
+        };
+        this.add_public_dependency(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+        this
+    }
 }
 
 impl ModuleLoader {
@@ -283,6 +295,6 @@ impl ModuleLoader {
     ///
     /// returns: ()
     pub fn add_public_dependency(&mut self, name: &str, version: &str) {
-        self.deps.insert(name.into(), version.into());
+        self.deps.insert(name.replace("-", "_"), version.into());
     }
 }

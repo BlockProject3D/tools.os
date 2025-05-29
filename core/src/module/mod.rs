@@ -40,7 +40,7 @@ pub mod error;
 mod loader;
 
 mod module;
-mod library;
+pub mod library;
 
 pub use loader::ModuleLoader;
 
