@@ -59,18 +59,16 @@ impl ModuleMain {
             "\"\0BP3D_OS_MODULE|TYPE=RUST|NAME={}|VERSION={}|RUSTC={}|DEPS={}\0\"",
             crate_name, crate_version, rustc_version, deps_list
         );
-        // #[used(linker)] on linux builds until https://github.com/rust-lang/rust/pull/140872 gets merged
         let rust_code = format!(
             r"
     #[unsafe(no_mangle)]
-    #[used]
     static mut {mod_const_name}: *const std::ffi::c_char = {data}.as_ptr() as _;
 "
         );
         let virtual_lib = format!("
-    #[used]
-    static mut {mod_const_name}_VIRTUAL: bp3d_os::module::library::types::VirtualLibrary = bp3d_os::module::library::types::VirtualLibrary::new(\"{crate_name}\", &[
-        (\"{mod_const_name}\", unsafe {{ {mod_const_name} as _ }})");
+    #[allow(static_mut_refs)]
+    pub static VIRTUAL_MODULE: bp3d_os::module::library::types::VirtualLibrary = bp3d_os::module::library::types::VirtualLibrary::new(\"{crate_name}\", &[
+        (\"{mod_const_name}\", unsafe {{ &{mod_const_name} as *const *const i8 as *const std::ffi::c_void }})");
         let out_path =
             PathBuf::from(std::env::var_os("OUT_DIR").unwrap()).join("bp3d_os_module.rs");
         Self {
@@ -131,6 +129,7 @@ impl ModuleMain {
         println!("cargo::rustc-link-arg-cdylib=-Wl,-install_name,@rpath/lib{crate_name}.dylib");
         #[cfg(all(unix, not(target_vendor = "apple")))]
         println!("cargo::rustc-link-arg-cdylib=-Wl,-soname,lib{crate_name}.so");
+        //TODO: Remove when VirtualLibrary will be working
         #[cfg(all(unix, not(target_vendor = "apple")))]
         println!("cargo::rustc-link-arg=-Wl,--export-dynamic");
         println!(

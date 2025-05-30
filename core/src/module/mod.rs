@@ -51,5 +51,10 @@ pub use module::Module;
 /// Note: the modules must be available as Cargo dependencies.
 #[macro_export]
 macro_rules! link_modules {
-    ($($module: ident),*) => { $(use $module;)* };
+    ($($module: ident),*) => {
+        #[used]
+        static MODULES: &'static [&'static $crate::module::library::types::VirtualLibrary] = &[
+            $(&$module::VIRTUAL_MODULE),*
+        ];
+    };
 }

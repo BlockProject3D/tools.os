@@ -37,6 +37,8 @@ pub struct VirtualLibrary {
     symbols: &'static [(&'static str, *const c_void)]
 }
 
+unsafe impl Sync for VirtualLibrary { }
+
 impl VirtualLibrary {
     /// Creates a new [VirtualLibrary] from a name and an array of symbols.
     ///
