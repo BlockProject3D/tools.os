@@ -32,6 +32,7 @@ use crate::module::library::Library;
 use crate::module::library::symbol::Symbol;
 
 /// This represents a virtual library to be used in full statically-linked applications.
+#[derive(Copy, Clone)]
 pub struct VirtualLibrary {
     name: &'static str,
     symbols: &'static [(&'static str, *const c_void)]
@@ -58,14 +59,11 @@ impl Library for VirtualLibrary {
         if name.as_ref().find('\0').is_some() {
             return Err(Error::Null);
         }
-        for (name, symbol) in self.symbols {
-            if name == name {
+        for (name1, symbol) in self.symbols {
+            if *name1 == name.as_ref() {
                 return Ok(Some(Symbol::from_raw(*symbol)))
             }
         }
         Ok(None)
-    }
-
-    unsafe fn unload(self) {
     }
 }

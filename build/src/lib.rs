@@ -80,9 +80,8 @@ impl ModuleMain {
     }
 
     pub fn add_export(mut self, func_name: impl AsRef<str>) -> Self {
-        let func_name_upper = func_name.as_ref().to_uppercase();
         let func_name = func_name.as_ref();
-        self.virtual_lib += &format!(",\n        (\"{func_name_upper}\", {func_name} as _)");
+        self.virtual_lib += &format!(",\n        (\"{func_name}\", {func_name} as _)");
         self
     }
 
@@ -129,9 +128,6 @@ impl ModuleMain {
         println!("cargo::rustc-link-arg-cdylib=-Wl,-install_name,@rpath/lib{crate_name}.dylib");
         #[cfg(all(unix, not(target_vendor = "apple")))]
         println!("cargo::rustc-link-arg-cdylib=-Wl,-soname,lib{crate_name}.so");
-        //TODO: Remove when VirtualLibrary will be working
-        #[cfg(all(unix, not(target_vendor = "apple")))]
-        println!("cargo::rustc-link-arg=-Wl,--export-dynamic");
         println!(
             "cargo:rustc-env=BP3D_OS_MODULE_MAIN={}",
             self.out_path.display()

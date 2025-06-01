@@ -59,12 +59,4 @@ pub trait Library {
     /// This function assumes the returned symbol is of the correct type and does not use any ABI
     /// incompatible types. If this condition is not maintained then this function is UB.
     unsafe fn load_symbol<T>(&self, name: impl AsRef<str>) -> crate::module::Result<Option<types::Symbol<T>>>;
-
-    /// Unloads the current module.
-    ///
-    /// # Safety
-    ///
-    /// This function assumes no Symbols from this module are currently in scope, if not this
-    /// function is UB.
-    unsafe fn unload(self);
 }

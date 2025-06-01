@@ -29,12 +29,15 @@
 //! This module contains helpers for C module symbols.
 
 use std::ffi::c_void;
+use std::marker::PhantomData;
 
-/// This represents a symbol from a module.
-#[derive(Debug)]
-pub struct Symbol<T>(*const T);
+/// This represents a symbol from a [Library](crate::module::library::Library).
+pub struct Symbol<'a, T> {
+    ptr: *const T,
+    useless: PhantomData<&'a ()>,
+}
 
-impl<T> Symbol<T> {
+impl<'a, T> Symbol<'a, T> {
     /// Creates a new [Symbol] from a raw pointer.
     ///
     /// # Arguments
@@ -46,17 +49,40 @@ impl<T> Symbol<T> {
     /// # Safety
     ///
     /// This is UB if val does not match the signature of T.
+    #[inline(always)]
     pub unsafe fn from_raw(val: *const c_void) -> Self {
-        Self(val as *const T)
+        Self {
+            ptr: val as *const T,
+            useless: PhantomData,
+        }
     }
 
     /// Returns the raw pointer of this symbol.
+    #[inline(always)]
     pub fn as_ptr(&self) -> *const T {
-        self.0
+        self.ptr
+    }
+
+    /// Creates a static reference to a symbol.
+    ///
+    /// # Safety
+    ///
+    /// This function assumes that the matching Library this symbol originates from will never ever
+    /// be dropped/unloaded before using the produced static symbol. If the returned symbol is used
+    /// after dropping the matching Library this symbol originated from, this is UB.
+    ///
+    /// This is best ensured using a [ModuleLoader](crate::module::ModuleLoader) rather than messing
+    /// with [Library](crate::module::library::Library) manually.
+    #[inline(always)]
+    pub unsafe fn as_static(&self) -> Symbol<'static, T> {
+        Symbol {
+            ptr: self.ptr,
+            useless: PhantomData,
+        }
     }
 }
 
-impl<T, R> Symbol<extern "C" fn(T) -> R> {
+impl<'a, T, R> Symbol<'a, extern "C" fn(T) -> R> {
     /// Calls this symbol if this symbol is a function.
     ///
     /// # Arguments
@@ -65,12 +91,12 @@ impl<T, R> Symbol<extern "C" fn(T) -> R> {
     ///
     /// returns: R
     pub fn call(&self, val: T) -> R {
-        let f: fn(T) -> R = unsafe { std::mem::transmute(self.0) };
+        let f: fn(T) -> R = unsafe { std::mem::transmute(self.ptr) };
         f(val)
     }
 }
 
-impl<T, T1, R> Symbol<extern "C" fn(T, T1) -> R> {
+impl<'a, T, T1, R> Symbol<'a, extern "C" fn(T, T1) -> R> {
     /// Calls this symbol if this symbol is a function.
     ///
     /// # Arguments
@@ -79,12 +105,12 @@ impl<T, T1, R> Symbol<extern "C" fn(T, T1) -> R> {
     ///
     /// returns: R
     pub fn call(&self, val: T, val1: T1) -> R {
-        let f: fn(T, T1) -> R = unsafe { std::mem::transmute(self.0) };
+        let f: fn(T, T1) -> R = unsafe { std::mem::transmute(self.ptr) };
         f(val, val1)
     }
 }
 
-impl<T, T1, T2, R> Symbol<extern "C" fn(T, T1, T2) -> R> {
+impl<'a, T, T1, T2, R> Symbol<'a, extern "C" fn(T, T1, T2) -> R> {
     /// Calls this symbol if this symbol is a function.
     ///
     /// # Arguments
@@ -93,17 +119,17 @@ impl<T, T1, T2, R> Symbol<extern "C" fn(T, T1, T2) -> R> {
     ///
     /// returns: R
     pub fn call(&self, val: T, val1: T1, val2: T2) -> R {
-        let f: fn(T, T1, T2) -> R = unsafe { std::mem::transmute(self.0) };
+        let f: fn(T, T1, T2) -> R = unsafe { std::mem::transmute(self.ptr) };
         f(val, val1, val2)
     }
 }
 
-impl<R> Symbol<extern "C" fn() -> R> {
+impl<'a, R> Symbol<'a, extern "C" fn() -> R> {
     /// Calls this symbol if this symbol is a function.
     ///
     /// returns: R
     pub fn call(&self) -> R {
-        let f: fn() -> R = unsafe { std::mem::transmute(self.0) };
+        let f: fn() -> R = unsafe { std::mem::transmute(self.ptr) };
         f()
     }
 }

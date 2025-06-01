@@ -32,12 +32,12 @@ bp3d_os::link_modules!(test_mod);
 
 #[test]
 fn test_static_modules() {
-    let mut loader = ModuleLoader::new();
+    let mut loader = ModuleLoader::new(BUILTIN_MODULES);
     println!("Running simple module load/unload test");
-    loader.load_self("test-mod").unwrap();
-    unsafe { loader.unload("test-mod").unwrap() };
+    unsafe { loader.load_builtin("test-mod").unwrap() };
+    loader.unload("test-mod").unwrap();
     println!("Running module load twice test followed by unload");
-    loader.load_self("test-mod").unwrap();
-    loader.load_self("test-mod").unwrap();
-    unsafe { loader.unload("test-mod").unwrap() };
+    unsafe { loader.load_builtin("test-mod").unwrap() };
+    unsafe { loader.load_builtin("test-mod").unwrap() };
+    loader.unload("test-mod").unwrap();
 }

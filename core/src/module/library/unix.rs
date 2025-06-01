@@ -90,8 +90,10 @@ impl super::Library for Library {
             Ok(Some(Symbol::from_raw(sym)))
         }
     }
+}
 
-    unsafe fn unload(self) {
-        dlclose(self.0);
+impl Drop for Library {
+    fn drop(&mut self) {
+        unsafe { dlclose(self.0) };
     }
 }

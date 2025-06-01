@@ -53,7 +53,7 @@ pub use module::Module;
 macro_rules! link_modules {
     ($($module: ident),*) => {
         #[used]
-        static MODULES: &'static [&'static $crate::module::library::types::VirtualLibrary] = &[
+        static BUILTIN_MODULES: &'static [&'static $crate::module::library::types::VirtualLibrary] = &[
             $(&$module::VIRTUAL_MODULE),*
         ];
     };

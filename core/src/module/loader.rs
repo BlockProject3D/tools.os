@@ -35,14 +35,15 @@ use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use crate::module::library::{Library, OS_EXT};
-use crate::module::library::types::OsLibrary;
+use crate::module::library::types::{OsLibrary, VirtualLibrary};
 
 /// Represents a module loader which can support loading multiple related modules.
 pub struct ModuleLoader {
     paths: Vec<PathBuf>,
     modules: HashMap<String, Module<OsLibrary>>,
+    builtin_modules: HashMap<String, Module<VirtualLibrary>>,
     deps: HashMap<String, String>,
-    this: Option<OsLibrary>
+    builtins: &'static [&'static VirtualLibrary]
 }
 
 const MOD_HEADER: &[u8] = b"BP3D_OS_MODULE|";
@@ -139,16 +140,29 @@ unsafe fn load_lib(
     let metadata = load_metadata(path)?;
     check_metadata(&metadata, deps2)?;
     let module = Module::new(OsLibrary::load(path)?, metadata);
-    module_open(name, &module)?;
+    module_open(name, module.lib())?;
     Ok(module)
 }
 
-unsafe fn module_open<L: Library>(name: &str, m: &Module<L>) -> super::Result<()> {
+unsafe fn module_open<L: Library>(name: &str, lib: &L) -> super::Result<()> {
     let main_name = format!("bp3d_os_module_{}_open", name);
-    if let Some(main) = m.load_symbol::<extern "C" fn()>(main_name)? {
+    if let Some(main) = lib.load_symbol::<extern "C" fn()>(main_name)? {
         main.call();
     }
     Ok(())
+}
+
+unsafe fn load_by_symbol<L: Library>(lib: L, name: &str, deps: &mut HashMap<String, String>) -> super::Result<Module<L>> {
+    let mod_const_name = format!("BP3D_OS_MODULE_{}", name.to_uppercase());
+    if let Some(sym) = unsafe { lib.load_symbol::<*const c_char>(mod_const_name) }? {
+        let bytes = unsafe { CStr::from_ptr((*sym.as_ptr()).offset(1)) }.to_bytes_with_nul();
+        let metadata = parse_metadata(bytes)?;
+        check_metadata(&metadata, deps)?;
+        let module = Module::new(lib, metadata);
+        unsafe { module_open(&name, module.lib()) }?;
+        return Ok(module);
+    }
+    Err(Error::NotFound(name.into()))
 }
 
 impl Default for ModuleLoader {
@@ -157,7 +171,8 @@ impl Default for ModuleLoader {
             paths: Default::default(),
             modules: Default::default(),
             deps: Default::default(),
-            this: None,
+            builtin_modules: Default::default(),
+            builtins: &[]
         };
         this.add_public_dependency(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
         this
@@ -166,11 +181,44 @@ impl Default for ModuleLoader {
 
 impl ModuleLoader {
     /// Create a new instance of a [ModuleLoader].
-    pub fn new() -> ModuleLoader {
-        Self::default()
+    pub fn new(builtins: &'static [&'static VirtualLibrary]) -> ModuleLoader {
+        let mut def = Self::default();
+        def.builtins = builtins;
+        def
     }
 
-    /// Attempts to load a module from the specified name which is statically built in the current
+    /// Attempts to load the given builtin module from its name.
+    ///
+    /// # Arguments
+    ///
+    /// * `name`: the name of the builtin module to load.
+    ///
+    /// returns: Result<&Module<VirtualLibrary>, Error>
+    ///
+    /// # Safety
+    ///
+    /// This function assumes the module to be loaded, if it exists has the correct format otherwise
+    /// this function is UB.
+    pub unsafe fn load_builtin(&mut self, name: &str) -> super::Result<&Module<VirtualLibrary>> {
+        let name = name.replace("-", "_");
+        if self.builtin_modules.contains_key(&name) {
+            Ok(unsafe { self.builtin_modules.get(&name).unwrap_unchecked() })
+        } else {
+            for builtin in self.builtins {
+                if builtin.name() == &name {
+                    let module = unsafe { load_by_symbol(**builtin, &name, &mut self.deps) }
+                        .map_err(|e| match e {
+                            Error::NotFound(_) => Error::MissingMetadata,
+                            e => e
+                        })?;
+                    return Ok(self.builtin_modules.entry(name).or_insert(module));
+                }
+            }
+            Err(Error::NotFound(name))
+        }
+    }
+
+    /// Attempts to load a module from the specified name which is dynamically linked in the current
     /// running software.
     ///
     /// # Arguments
@@ -178,26 +226,19 @@ impl ModuleLoader {
     /// * `name`: the name of the module to be loaded.
     ///
     /// returns: Result<&Module, Error>
-    pub fn load_self(&mut self, name: &str) -> super::Result<&Module<OsLibrary>> {
+    ///
+    /// # Safety
+    ///
+    /// This function assumes the module to be loaded, if it exists has the correct format otherwise
+    /// this function is UB.
+    pub unsafe fn load_self(&mut self, name: &str) -> super::Result<&Module<OsLibrary>> {
         let name = name.replace("-", "_");
         if self.modules.contains_key(&name) {
             unsafe { Ok(self.modules.get(&name).unwrap_unchecked()) }
         } else {
-            if self.this.is_none() {
-                self.this = Some(OsLibrary::open_self()?);
-            }
-            let handle = unsafe { self.this.as_ref().unwrap_unchecked() };
-            let mod_const_name = format!("BP3D_OS_MODULE_{}", name.to_uppercase());
-            if let Some(sym) = unsafe { handle.load_symbol::<*const c_char>(mod_const_name) }? {
-                let bytes = unsafe { CStr::from_ptr((*sym.as_ptr()).offset(1)) }.to_bytes_with_nul();
-                let metadata = parse_metadata(bytes)?;
-                check_metadata(&metadata, &mut self.deps)?;
-                let module = Module::new(OsLibrary::open_self()?, metadata);
-                unsafe { module_open(&name, &module) }?;
-                self.modules.insert(name.clone(), module);
-                return Ok(&self.modules[&name]);
-            }
-            Err(Error::NotFound(name.into()))
+            let this = OsLibrary::open_self()?;
+            let module = unsafe { load_by_symbol(this, &name, &mut self.deps) }?;
+            Ok(self.modules.entry(name).or_insert(module))
         }
     }
 
@@ -253,22 +294,25 @@ impl ModuleLoader {
     /// * `name`: the name of the module to unload.
     ///
     /// returns: ()
-    ///
-    /// # Safety
-    ///
-    /// This function assumes no Symbols from this module are currently in scope, if not this
-    /// function is UB.
-    pub unsafe fn unload(&mut self, name: &str) -> super::Result<()> {
+    pub fn unload(&mut self, name: &str) -> super::Result<()> {
         let name = name.replace("-", "_");
-        let module = self
-            .modules
-            .remove(&name)
-            .ok_or_else(|| Error::NotFound(name.clone()))?;
-        let main_name = format!("bp3d_os_module_{}_close", &name);
-        if let Some(main) = module.load_symbol::<extern "C" fn()>(main_name)? {
-            main.call();
+        if self.modules.contains_key(&name) {
+            let module = unsafe { self.modules.remove(&name).unwrap_unchecked() };
+            let main_name = format!("bp3d_os_module_{}_close", &name);
+            if let Some(main) = unsafe { module.lib().load_symbol::<extern "C" fn()>(main_name)? } {
+                main.call();
+            }
+            drop(module);
+        } else {
+            let module = self
+                .builtin_modules
+                .remove(&name)
+                .ok_or_else(|| Error::NotFound(name.clone()))?;
+            let main_name = format!("bp3d_os_module_{}_close", &name);
+            if let Some(main) = unsafe { module.lib().load_symbol::<extern "C" fn()>(main_name)? } {
+                main.call();
+            }
         }
-        module.unload();
         Ok(())
     }
 

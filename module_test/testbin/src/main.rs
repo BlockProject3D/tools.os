@@ -29,13 +29,13 @@
 use bp3d_os::module::ModuleLoader;
 
 fn main() {
-    let mut loader = ModuleLoader::new();
+    let mut loader = ModuleLoader::default();
     loader.add_search_path("./target/debug/");
     println!("Running simple module load/unload test");
     unsafe { loader.load("test-mod").unwrap() };
-    unsafe { loader.unload("test-mod").unwrap() };
+    loader.unload("test-mod").unwrap();
     println!("Running module load twice test followed by unload");
     unsafe { loader.load("test-mod").unwrap() };
     unsafe { loader.load("test-mod").unwrap() };
-    unsafe { loader.unload("test-mod").unwrap() };
+    loader.unload("test-mod").unwrap();
 }

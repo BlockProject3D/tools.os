@@ -29,7 +29,6 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use crate::module::library::Library;
-use crate::module::library::types::Symbol;
 
 /// This represents a module shared object.
 #[derive(Debug)]
@@ -68,29 +67,8 @@ impl<L: Library> Module<L> {
         self.metadata.get(key).map(|s| s.as_str())
     }
 
-    /// Attempts to load the given symbol from this module.
-    ///
-    /// # Arguments
-    ///
-    /// * `name`: the name of the symbol.
-    ///
-    /// returns: Result<Symbol<T>, Error>
-    ///
-    /// # Safety
-    ///
-    /// This function assumes the returned symbol is of the correct type and does not use any ABI
-    /// incompatible types. If this condition is not maintained then this function is UB.
-    pub unsafe fn load_symbol<T>(&self, name: impl AsRef<str>) -> super::Result<Option<Symbol<T>>> {
-        self.lib.load_symbol(name)
-    }
-
-    /// Unloads the current module.
-    ///
-    /// # Safety
-    ///
-    /// This function assumes no Symbols from this module are currently in scope, if not this
-    /// function is UB.
-    pub unsafe fn unload(self) {
-        self.lib.unload();
+    /// Returns the library attached to this module.
+    pub fn lib(&self) -> &L {
+        &self.lib
     }
 }

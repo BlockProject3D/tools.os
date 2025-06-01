@@ -90,8 +90,10 @@ impl super::Library for Library {
             Ok(Some(Symbol::from_raw(std::mem::transmute(sym))))
         }
     }
+}
 
-    unsafe fn unload(self) {
-        FreeLibrary(self.0);
+impl Drop for Library {
+    fn drop(&mut self) {
+        unsafe { FreeLibrary(self.0) };
     }
 }
