@@ -128,14 +128,17 @@ impl ModuleMain {
     }
 
     pub fn build(mut self) {
-        let crate_name = self.crate_name;
         self.virtual_lib += "\n    ]);";
         self.rust_code += &self.virtual_lib;
         std::fs::write(&self.out_path, self.rust_code).unwrap();
-        #[cfg(target_vendor = "apple")]
-        println!("cargo::rustc-link-arg-cdylib=-Wl,-install_name,@rpath/lib{crate_name}.dylib");
-        #[cfg(all(unix, not(target_vendor = "apple")))]
-        println!("cargo::rustc-link-arg-cdylib=-Wl,-soname,lib{crate_name}.so");
+        #[cfg(unix)]
+        {
+            let crate_name = self.crate_name;
+            #[cfg(target_vendor = "apple")]
+            println!("cargo::rustc-link-arg-cdylib=-Wl,-install_name,@rpath/lib{crate_name}.dylib");
+            #[cfg(all(unix, not(target_vendor = "apple")))]
+            println!("cargo::rustc-link-arg-cdylib=-Wl,-soname,lib{crate_name}.so");
+        }
         println!(
             "cargo:rustc-env=BP3D_OS_MODULE_MAIN={}",
             self.out_path.display()
