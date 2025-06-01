@@ -26,9 +26,9 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::module::library::Library;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
-use crate::module::library::Library;
 
 /// This represents a module shared object.
 #[derive(Debug)]

@@ -26,6 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::module;
 use crate::module::error::Error;
 use crate::module::library::symbol::Symbol;
 use std::ffi::CString;
@@ -34,7 +35,6 @@ use std::os::windows::ffi::OsStrExt;
 use std::path::Path;
 use windows_sys::Win32::Foundation::{FreeLibrary, HMODULE};
 use windows_sys::Win32::System::LibraryLoader::{GetModuleHandleW, GetProcAddress, LoadLibraryW};
-use crate::module;
 
 pub const EXT: &str = "dll";
 
