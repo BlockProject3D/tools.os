@@ -39,7 +39,9 @@ pub mod error;
 
 mod loader;
 
+#[allow(clippy::module_inception)]
 mod module;
+
 pub mod library;
 
 pub use loader::ModuleLoader;

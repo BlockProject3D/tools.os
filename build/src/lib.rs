@@ -37,6 +37,12 @@ pub struct ModuleMain {
     virtual_lib: String
 }
 
+impl Default for ModuleMain {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ModuleMain {
     pub fn new() -> Self {
         let crate_name = std::env::var("CARGO_PKG_NAME").unwrap().replace('-', "_");
@@ -62,6 +68,8 @@ impl ModuleMain {
         let rust_code = format!(
             r"
     #[unsafe(no_mangle)]
+    #[allow(clippy::manual_c_str_literals)] // The string is enclosed in NULLs and apparently clippy
+    // does not like that...
     static mut {mod_const_name}: *const std::ffi::c_char = {data}.as_ptr() as _;
 "
         );

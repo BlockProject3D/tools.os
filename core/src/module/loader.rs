@@ -124,7 +124,7 @@ fn check_metadata(metadata: &HashMap<String, String>, deps2: &mut HashMap<String
                         }));
                     }
                 } else {
-                    deps2.insert(name.into(), version.into());
+                    deps2.insert(name, version.into());
                 }
             }
         }
@@ -154,12 +154,12 @@ unsafe fn module_open<L: Library>(name: &str, lib: &L) -> super::Result<()> {
 
 unsafe fn load_by_symbol<L: Library>(lib: L, name: &str, deps: &mut HashMap<String, String>) -> super::Result<Module<L>> {
     let mod_const_name = format!("BP3D_OS_MODULE_{}", name.to_uppercase());
-    if let Some(sym) = unsafe { lib.load_symbol::<*const c_char>(mod_const_name) }? {
-        let bytes = unsafe { CStr::from_ptr((*sym.as_ptr()).offset(1)) }.to_bytes_with_nul();
+    if let Some(sym) = lib.load_symbol::<*const c_char>(mod_const_name)? {
+        let bytes = CStr::from_ptr((*sym.as_ptr()).offset(1)).to_bytes_with_nul();
         let metadata = parse_metadata(bytes)?;
         check_metadata(&metadata, deps)?;
         let module = Module::new(lib, metadata);
-        unsafe { module_open(&name, module.lib()) }?;
+        module_open(name, module.lib())?;
         return Ok(module);
     }
     Err(Error::NotFound(name.into()))
@@ -181,6 +181,8 @@ impl Default for ModuleLoader {
 
 impl ModuleLoader {
     /// Create a new instance of a [ModuleLoader].
+    // Apparently clippy prefers code duplication, well I said no...
+    #[allow(clippy::field_reassign_with_default)]
     pub fn new(builtins: &'static [&'static VirtualLibrary]) -> ModuleLoader {
         let mut def = Self::default();
         def.builtins = builtins;
@@ -205,7 +207,7 @@ impl ModuleLoader {
             Ok(unsafe { self.builtin_modules.get(&name).unwrap_unchecked() })
         } else {
             for builtin in self.builtins {
-                if builtin.name() == &name {
+                if builtin.name() == name {
                     let module = unsafe { load_by_symbol(**builtin, &name, &mut self.deps) }
                         .map_err(|e| match e {
                             Error::NotFound(_) => Error::MissingMetadata,
@@ -283,7 +285,7 @@ impl ModuleLoader {
                     return Ok(&self.modules[&name]);
                 }
             }
-            Err(Error::NotFound(name.into()))
+            Err(Error::NotFound(name))
         }
     }
 
