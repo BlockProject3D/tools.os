@@ -8,7 +8,7 @@ publish = false
 crate-type = ["rlib", "cdylib"]
 
 [build-dependencies]
-bp3d-os-build = { version = "1.0.0-rc.1.0.0", path = "../../build" }
+bp3d-os-build = { version = "1.0.0-rc.2.0.0", path = "../../build" }
 
 [dependencies]
-bp3d-os = { version = "1.0.0-rc.4.3.1", path = "../../core", features = ["module"] }
+bp3d-os = { version = "1.0.0-rc.4.4.0", path = "../../core", features = ["module"] }
