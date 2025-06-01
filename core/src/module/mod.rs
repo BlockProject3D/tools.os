@@ -39,8 +39,8 @@ pub mod error;
 
 mod loader;
 
-mod module;
 pub mod library;
+mod module;
 
 pub use loader::ModuleLoader;
 

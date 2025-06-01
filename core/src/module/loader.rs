@@ -27,6 +27,8 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::module::error::{Error, IncompatibleDependency, IncompatibleRustc};
+use crate::module::library::types::{OsLibrary, VirtualLibrary};
+use crate::module::library::{Library, OS_EXT};
 use crate::module::Module;
 use crate::module::RUSTC_VERSION;
 use std::collections::HashMap;
@@ -34,8 +36,6 @@ use std::ffi::{c_char, CStr};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use crate::module::library::{Library, OS_EXT};
-use crate::module::library::types::{OsLibrary, VirtualLibrary};
 
 /// Represents a module loader which can support loading multiple related modules.
 pub struct ModuleLoader {
@@ -43,7 +43,7 @@ pub struct ModuleLoader {
     modules: HashMap<String, Module<OsLibrary>>,
     builtin_modules: HashMap<String, Module<VirtualLibrary>>,
     deps: HashMap<String, String>,
-    builtins: &'static [&'static VirtualLibrary]
+    builtins: &'static [&'static VirtualLibrary],
 }
 
 const MOD_HEADER: &[u8] = b"BP3D_OS_MODULE|";
@@ -89,7 +89,10 @@ fn load_metadata(path: &Path) -> super::Result<HashMap<String, String>> {
     Err(Error::MissingMetadata)
 }
 
-fn check_metadata(metadata: &HashMap<String, String>, deps2: &mut HashMap<String, String>) -> super::Result<()> {
+fn check_metadata(
+    metadata: &HashMap<String, String>,
+    deps2: &mut HashMap<String, String>,
+) -> super::Result<()> {
     if metadata.get("TYPE").ok_or(Error::InvalidMetadata)? == "RUST" {
         // This symbol is optional and will not exist on C/C++ modules, only on Rust based modules.
         // The main reason the rustc version is checked on Rust modules is for interop with user
@@ -113,7 +116,10 @@ fn check_metadata(metadata: &HashMap<String, String>, deps2: &mut HashMap<String
         if !deps.is_empty() {
             for dep in deps.split(",") {
                 let mut iter = dep.split("=");
-                let name = iter.next().ok_or(Error::InvalidDepFormat)?.replace("-", "_");
+                let name = iter
+                    .next()
+                    .ok_or(Error::InvalidDepFormat)?
+                    .replace("-", "_");
                 let version = iter.next().ok_or(Error::InvalidDepFormat)?;
                 if let Some(expected_version) = deps2.get(&name) {
                     if version != expected_version {
@@ -152,7 +158,11 @@ unsafe fn module_open<L: Library>(name: &str, lib: &L) -> super::Result<()> {
     Ok(())
 }
 
-unsafe fn load_by_symbol<L: Library>(lib: L, name: &str, deps: &mut HashMap<String, String>) -> super::Result<Module<L>> {
+unsafe fn load_by_symbol<L: Library>(
+    lib: L,
+    name: &str,
+    deps: &mut HashMap<String, String>,
+) -> super::Result<Module<L>> {
     let mod_const_name = format!("BP3D_OS_MODULE_{}", name.to_uppercase());
     if let Some(sym) = unsafe { lib.load_symbol::<*const c_char>(mod_const_name) }? {
         let bytes = unsafe { CStr::from_ptr((*sym.as_ptr()).offset(1)) }.to_bytes_with_nul();
@@ -172,7 +182,7 @@ impl Default for ModuleLoader {
             modules: Default::default(),
             deps: Default::default(),
             builtin_modules: Default::default(),
-            builtins: &[]
+            builtins: &[],
         };
         this.add_public_dependency(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
         this
@@ -209,7 +219,7 @@ impl ModuleLoader {
                     let module = unsafe { load_by_symbol(**builtin, &name, &mut self.deps) }
                         .map_err(|e| match e {
                             Error::NotFound(_) => Error::MissingMetadata,
-                            e => e
+                            e => e,
                         })?;
                     return Ok(self.builtin_modules.entry(name).or_insert(module));
                 }

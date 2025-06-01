@@ -34,7 +34,7 @@ pub struct ModuleMain {
     rust_code: String,
     out_path: PathBuf,
     crate_name: String,
-    virtual_lib: String
+    virtual_lib: String,
 }
 
 impl ModuleMain {
@@ -75,7 +75,7 @@ impl ModuleMain {
             rust_code,
             out_path,
             crate_name,
-            virtual_lib
+            virtual_lib,
         }
     }
 

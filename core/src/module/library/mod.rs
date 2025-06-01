@@ -28,13 +28,13 @@
 
 //! This module contains various library types.
 
-#[cfg(unix)]
-mod unix;
-#[cfg(windows)]
-mod windows;
 mod symbol;
 pub mod types;
+#[cfg(unix)]
+mod unix;
 mod r#virtual;
+#[cfg(windows)]
+mod windows;
 
 /// The extension of a module.
 #[cfg(unix)]
@@ -58,5 +58,8 @@ pub trait Library {
     ///
     /// This function assumes the returned symbol is of the correct type and does not use any ABI
     /// incompatible types. If this condition is not maintained then this function is UB.
-    unsafe fn load_symbol<T>(&self, name: impl AsRef<str>) -> crate::module::Result<Option<types::Symbol<T>>>;
+    unsafe fn load_symbol<T>(
+        &self,
+        name: impl AsRef<str>,
+    ) -> crate::module::Result<Option<types::Symbol<T>>>;
 }

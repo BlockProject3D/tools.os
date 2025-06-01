@@ -26,25 +26,28 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::ffi::c_void;
 use crate::module::error::Error;
-use crate::module::library::Library;
 use crate::module::library::symbol::Symbol;
+use crate::module::library::Library;
+use std::ffi::c_void;
 
 /// This represents a virtual library to be used in full statically-linked applications.
 #[derive(Copy, Clone)]
 pub struct VirtualLibrary {
     name: &'static str,
-    symbols: &'static [(&'static str, *const c_void)]
+    symbols: &'static [(&'static str, *const c_void)],
 }
 
-unsafe impl Sync for VirtualLibrary { }
+unsafe impl Sync for VirtualLibrary {}
 
 impl VirtualLibrary {
     /// Creates a new [VirtualLibrary] from a name and an array of symbols.
     ///
     /// This function is const to allow statics declaration from build tool.
-    pub const fn new(name: &'static str, symbols: &'static [(&'static str, *const c_void)]) -> Self {
+    pub const fn new(
+        name: &'static str,
+        symbols: &'static [(&'static str, *const c_void)],
+    ) -> Self {
         Self { name, symbols }
     }
 
@@ -55,13 +58,16 @@ impl VirtualLibrary {
 }
 
 impl Library for VirtualLibrary {
-    unsafe fn load_symbol<T>(&self, name: impl AsRef<str>) -> crate::module::Result<Option<Symbol<T>>> {
+    unsafe fn load_symbol<T>(
+        &self,
+        name: impl AsRef<str>,
+    ) -> crate::module::Result<Option<Symbol<T>>> {
         if name.as_ref().find('\0').is_some() {
             return Err(Error::Null);
         }
         for (name1, symbol) in self.symbols {
             if *name1 == name.as_ref() {
-                return Ok(Some(Symbol::from_raw(*symbol)))
+                return Ok(Some(Symbol::from_raw(*symbol)));
             }
         }
         Ok(None)
