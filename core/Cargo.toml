@@ -1,6 +1,6 @@
 [package]
 name = "bp3d-os"
-version = "1.0.0-rc.4.4.0"
+version = "1.0.0-rc.4.5.0"
 authors = ["Yuri Edward <yuri6037@outlook.com>"]
 edition = "2021"
 description = "Operating System tools designed for BlockProject3D"
