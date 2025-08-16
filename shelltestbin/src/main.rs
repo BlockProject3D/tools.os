@@ -26,35 +26,33 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Operating System tools and extensions designed for BlockProject3D.
+use bp3d_os::shell::{Event, SendChannel, Shell};
+use std::sync::mpsc;
+use bp3d_os::shell_println;
 
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
-#![warn(missing_docs)]
-// This is unfortunate but objc appears to be generating a lot of these warnings and new versions
-// exists. This is a temporary workaround. The solution would most likely be to re-write objc inline
-// as crates.io forbids patches.
-#![cfg_attr(target_vendor = "apple", allow(unexpected_cfgs))]
+struct AnnoyingRust(mpsc::Sender<Event>);
 
-#[cfg(feature = "dirs")]
-pub mod dirs;
+impl SendChannel for AnnoyingRust {
+    fn send(&self, event: Event) {
+        self.0.send(event).unwrap();
+    }
+}
 
-#[cfg(feature = "assets")]
-pub mod assets;
-
-#[cfg(feature = "open")]
-pub mod open;
-
-#[cfg(feature = "fs")]
-pub mod fs;
-
-#[cfg(feature = "cpu-info")]
-pub mod cpu_info;
-
-#[cfg(feature = "time")]
-pub mod time;
-
-#[cfg(feature = "module")]
-pub mod module;
-
-#[cfg(feature = "shell")]
-pub mod shell;
+fn main() {
+    let (send_ch, recv_ch) = mpsc::channel();
+    let shell = Shell::new("shelltestbin> ", AnnoyingRust(send_ch));
+    loop {
+        let msg = recv_ch.recv().unwrap();
+        match msg {
+            Event::CommandReceived(command) => {
+                if command == "exit" {
+                    break;
+                }
+                shell_println!("Received command: {}", command);
+                //println!();
+            },
+            Event::ExitRequested => break
+        }
+    }
+    shell.exit();
+}

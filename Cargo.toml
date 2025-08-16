@@ -4,5 +4,6 @@ members = [
     "core",
     "testbin",
     "module_test/test_mod",
-    "module_test/testbin"
+    "module_test/testbin",
+    "shelltestbin"
 ]

@@ -1,0 +1,8 @@
+[package]
+name = "shelltestbin"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+bp3d-os = { version = "1.0.0-rc.4.4.0", path = "../core", features = ["shell"] }
