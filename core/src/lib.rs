@@ -35,6 +35,9 @@
 // as crates.io forbids patches.
 #![cfg_attr(target_vendor = "apple", allow(unexpected_cfgs))]
 
+// New broken feature of rust causing warnings everywhere, remove that bullshit.
+#![allow(mismatched_lifetime_syntaxes)]
+
 #[cfg(feature = "dirs")]
 pub mod dirs;
 
