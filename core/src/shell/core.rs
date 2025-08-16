@@ -55,10 +55,10 @@ pub trait SendChannel: Send + 'static {
 
 /// Represents an interactive shell
 pub struct Shell {
-    os: Terminal,
+    _os: Terminal,
     input_thread: JoinHandle<()>,
     app_thread: JoinHandle<()>,
-    send_ch: mpsc::Sender<InputEvent>
+    _send_ch: mpsc::Sender<InputEvent>
 }
 
 fn print_prompt(row: i32, prompt: &'static str) {
@@ -236,10 +236,10 @@ impl Shell {
             application_thread(prompt, recv_ch, master_send_ch);
         });
         Self {
-            os: Terminal::new(),
+            _os: Terminal::new(),
             input_thread,
             app_thread,
-            send_ch
+            _send_ch: send_ch
         }
     }
 
