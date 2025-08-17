@@ -26,72 +26,43 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! Low-level platform-specific tools to control the OS console/terminal.
-
 use std::cell::Cell;
+use std::mem::MaybeUninit;
+use windows_sys::Win32::System::Console::{GetStdHandle, STD_OUTPUT_HANDLE};
 
 /// Represents an interactive terminal.
 pub struct Terminal {
-    #[cfg(unix)]
     attrs: libc::termios,
 }
 
-impl Terminal {
+impl crate::shell::os::Terminal {
     /// Creates a new instance of an interactive terminal.
     ///
     /// This function automatically sets-up the current OS terminal for interactive input and resets
     /// it back on drop automatically.
     pub fn new() -> Self {
-        #[cfg(unix)]
-        {
-            use std::mem::MaybeUninit;
-            let mut attrs = MaybeUninit::<libc::termios>::uninit();
-            unsafe {
-                libc::tcgetattr(0, attrs.as_mut_ptr());
-                let mut newattrs = attrs.assume_init();
-                newattrs.c_lflag &= !(libc::ICANON | libc::ECHO);
-                libc::tcsetattr(0, libc::TCSANOW, &newattrs);
-                Terminal { attrs: attrs.assume_init() }
-            }
-        }
-        #[cfg(windows)]
-        {
-            Terminal {}
+        let mut attrs = MaybeUninit::<libc::termios>::uninit();
+        unsafe {
+            libc::tcgetattr(0, attrs.as_mut_ptr());
+            let mut newattrs = attrs.assume_init();
+            newattrs.c_lflag &= !(libc::ICANON | libc::ECHO);
+            libc::tcsetattr(0, libc::TCSANOW, &newattrs);
+            crate::shell::os::Terminal { attrs: attrs.assume_init() }
         }
     }
 }
 
-impl Drop for Terminal {
+impl Drop for crate::shell::os::Terminal {
     fn drop(&mut self) {
-        #[cfg(unix)]
-        {
-            unsafe { libc::tcsetattr(0, libc::TCSANOW, &self.attrs); }
-        }
+        unsafe { libc::tcsetattr(0, libc::TCSANOW, &self.attrs); }
     }
 }
 
 /// Writes the given string immediately (unbuffered).
 pub fn write(str: &str) {
-    #[cfg(unix)]
-    {
-        unsafe {
-            libc::write(1, str.as_bytes().as_ptr() as _, str.len());
-        }
+    unsafe {
+        libc::write(1, str.as_bytes().as_ptr() as _, str.len());
     }
-    #[cfg(windows)]
-    write!("{}", str)
-}
-
-/// Move the terminal cursor to the given x, y position in columns and rows respectively.
-pub fn move_cursor(x: i32, y: i32) {
-    #[cfg(unix)]
-    write(&format!("\x1b[{};{}H", y, x + 1)) // yeah rust is broken: impossible to use octal set
-}
-
-/// Clear the rest of the current line starting at the current cursor position.
-pub fn clear_remaining() {
-    #[cfg(unix)]
-    write("\x1b[K");
 }
 
 /// Returns a tuple with respectively the maximum number of columns and rows available in the
@@ -99,16 +70,11 @@ pub fn clear_remaining() {
 ///
 /// This function issues a syscall each time it is invoked.
 pub fn get_window_size() -> (i32, i32) {
-    #[cfg(unix)]
-    {
-        let mut sz = std::mem::MaybeUninit::<libc::winsize>::uninit();
-        unsafe {
-            libc::ioctl(1, libc::TIOCGWINSZ, sz.as_mut_ptr());
-            (sz.assume_init().ws_col as _, sz.assume_init().ws_row as _)
-        }
+    let mut sz = std::mem::MaybeUninit::<libc::winsize>::uninit();
+    unsafe {
+        libc::ioctl(1, libc::TIOCGWINSZ, sz.as_mut_ptr());
+        (sz.assume_init().ws_col as _, sz.assume_init().ws_row as _)
     }
-    #[cfg(windows)]
-    (0, 0)
 }
 
 thread_local! {
@@ -119,28 +85,12 @@ thread_local! {
 ///
 /// This function amortizes the cost of the syscall by only issuing it once for the current thread.
 pub fn get_window_height_amortized() -> i32 {
-    #[cfg(unix)]
-    {
-        if HEIGHT.get() == -1 {
-            let mut sz = std::mem::MaybeUninit::<libc::winsize>::uninit();
-            unsafe {
-                libc::ioctl(1, libc::TIOCGWINSZ, sz.as_mut_ptr());
-                HEIGHT.set(sz.assume_init().ws_row as _);
-            }
+    if HEIGHT.get() == -1 {
+        let mut sz = std::mem::MaybeUninit::<libc::winsize>::uninit();
+        unsafe {
+            libc::ioctl(1, libc::TIOCGWINSZ, sz.as_mut_ptr());
+            HEIGHT.set(sz.assume_init().ws_row as _);
         }
-        HEIGHT.get()
     }
-    #[cfg(windows)]
-    0
-}
-
-/// Simplified macro which does exactly the same as [println](std::println) but overwrites the current prompt
-/// rather than appending text after the prompt.
-#[macro_export]
-macro_rules! shell_println {
-    ($($data: tt)*) => {
-        $crate::shell::os::move_cursor(0, $crate::shell::os::get_window_height_amortized());
-        $crate::shell::os::clear_remaining();
-        println!($($data)*);
-    };
+    HEIGHT.get()
 }

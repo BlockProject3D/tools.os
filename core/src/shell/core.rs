@@ -273,7 +273,8 @@ impl Shell {
         #[cfg(windows)]
         {
             // Cancel all pending IO operations on standard input.
-            //TODO: CancelIoEx
+            let handle = unsafe { windows_sys::Win32::System::Console::GetStdHandle(windows_sys::Win32::System::Console::STD_INPUT_HANDLE) };
+            unsafe { windows_sys::Win32::System::IO::CancelIoEx(handle, std::ptr::null()) };
 
             // Join the threads.
             self.input_thread.join().unwrap();

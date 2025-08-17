@@ -26,39 +26,13 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use super::InputEvent;
+use libc::getchar;
+use libc::EOF;
 use std::sync::mpsc;
 
-#[cfg(unix)]
-const BUF_SIZE: usize = 4096;
+const BUF_SIZE: usize = 8;
 
-pub enum InputEvent {
-    End,
-    Input(String),
-    NewLine,
-    Complete,
-    HistoryPrev,
-    HistoryNext,
-    LineStart,
-    LineEnd,
-    Left,
-    Right,
-    Delete
-}
-
-#[cfg(windows)]
-pub fn input_thread(log_ch: &mpsc::Sender<InputEvent>) {
-    use std::io::stdin;
-    let io = stdin();
-    let mut str = String::new();
-    loop {
-        match io.read_line(&mut str) {
-            Err(_) => break,
-            Ok(_) => log_ch.send(InputEvent::Line(str.clone())).unwrap(),
-        }
-    }
-}
-
-#[cfg(unix)]
 fn handle_input(buf: &[u8], log_ch: &mpsc::Sender<InputEvent>) -> bool {
     // Codes found by reverse engineering on macOS Terminal. Apparently these codes are NEVER EVER
     // documented in the entire internet. All docs I found expose wrong information.
@@ -106,10 +80,7 @@ fn handle_input(buf: &[u8], log_ch: &mpsc::Sender<InputEvent>) -> bool {
     false
 }
 
-#[cfg(unix)]
 pub fn input_thread(log_ch: mpsc::Sender<InputEvent>) {
-    use libc::getchar;
-    use libc::EOF;
     let mut buf: [u8; BUF_SIZE] = [0; BUF_SIZE];
     let mut idx = 0;
     loop {
