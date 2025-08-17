@@ -59,13 +59,6 @@ impl Terminal {
             Terminal {}
         }
     }
-
-    /*pub fn cancel(&self) {
-        //FIXME: Not working.
-        #[cfg(unix)]
-        unsafe { libc::close(0); }
-        //TODO: CancelIoEx
-    }*/
 }
 
 impl Drop for Terminal {
