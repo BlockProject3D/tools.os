@@ -28,7 +28,6 @@
 
 use std::cell::Cell;
 use std::mem::MaybeUninit;
-use windows_sys::Win32::System::Console::{GetStdHandle, STD_OUTPUT_HANDLE};
 
 /// Represents an interactive terminal.
 pub struct Terminal {
