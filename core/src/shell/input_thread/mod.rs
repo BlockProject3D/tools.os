@@ -37,7 +37,7 @@ pub enum InputEvent {
     LineEnd,
     Left,
     Right,
-    Delete
+    Delete,
 }
 
 #[cfg(unix)]

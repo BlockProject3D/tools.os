@@ -81,7 +81,10 @@ impl Library {
 }
 
 impl super::Library for Library {
-    unsafe fn load_symbol<T>(&self, name: impl AsRef<str>) -> module::Result<Option<Symbol<'_, T>>> {
+    unsafe fn load_symbol<T>(
+        &self,
+        name: impl AsRef<str>,
+    ) -> module::Result<Option<Symbol<'_, T>>> {
         let name = CString::new(name.as_ref().as_bytes()).map_err(|_| Error::Null)?;
         let sym = GetProcAddress(self.0, name.as_ptr() as _);
         if sym.is_none() {
