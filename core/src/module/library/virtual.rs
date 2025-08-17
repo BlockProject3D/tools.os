@@ -61,7 +61,7 @@ impl Library for VirtualLibrary {
     unsafe fn load_symbol<T>(
         &self,
         name: impl AsRef<str>,
-    ) -> crate::module::Result<Option<Symbol<T>>> {
+    ) -> crate::module::Result<Option<Symbol<'_, T>>> {
         if name.as_ref().find('\0').is_some() {
             return Err(Error::Null);
         }

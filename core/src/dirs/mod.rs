@@ -1,4 +1,4 @@
-// Copyright (c) 2023, BlockProject 3D
+// Copyright (c) 2025, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -100,7 +100,7 @@ impl<'a> App<'a> {
     /// Use this directory to store any information not intended to be user accessible.
     /// Returns None if this system doesn't have any application writable location; this should
     /// never occur on any supported system except if such system is broken.
-    pub fn get_data(&self) -> Option<AppPath> {
+    pub fn get_data(&self) -> Option<AppPath<'_>> {
         self.data
             .get_or_try_set(|| system::get_app_data().ok_or(()).map(|v| v.join(self.name)))
             .ok()
@@ -114,7 +114,7 @@ impl<'a> App<'a> {
     ///
     /// This function first tries to use [get_app_cache](system::get_app_cache)/{APP} and
     /// falls back to [get_data](App::get_data)/Cache.
-    pub fn get_cache(&self) -> Option<AppPath> {
+    pub fn get_cache(&self) -> Option<AppPath<'_>> {
         self.cache
             .get_or_try_set(|| {
                 system::get_app_cache()
@@ -133,7 +133,7 @@ impl<'a> App<'a> {
     ///
     /// This function first tries to use [get_app_documents](system::get_app_documents) and
     /// falls back to [get_data](App::get_data)/Documents.
-    pub fn get_documents(&self) -> Option<AppPath> {
+    pub fn get_documents(&self) -> Option<AppPath<'_>> {
         // If this is OK then we must be running from a sandboxed system
         // where the app has it's own public documents folder, otherwise
         // create a "public" Documents directory inside the application's data directory.
@@ -154,7 +154,7 @@ impl<'a> App<'a> {
     ///
     /// This function first tries to use [get_app_logs](system::get_app_logs)/{APP} and
     /// falls back to [get_documents](App::get_documents)/Logs.
-    pub fn get_logs(&self) -> Option<AppPath> {
+    pub fn get_logs(&self) -> Option<AppPath<'_>> {
         // Logs should be public and not contain any sensitive information, so store that in
         // the app's public documents.
         self.logs
@@ -176,7 +176,7 @@ impl<'a> App<'a> {
     ///
     /// This function first tries to use [get_app_config](system::get_app_config)/{APP} and
     /// falls back to [get_data](App::get_data)/Config.
-    pub fn get_config(&self) -> Option<AppPath> {
+    pub fn get_config(&self) -> Option<AppPath<'_>> {
         self.config
             .get_or_try_set(|| {
                 system::get_app_config()

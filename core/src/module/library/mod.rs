@@ -61,5 +61,5 @@ pub trait Library {
     unsafe fn load_symbol<T>(
         &self,
         name: impl AsRef<str>,
-    ) -> crate::module::Result<Option<types::Symbol<T>>>;
+    ) -> crate::module::Result<Option<types::Symbol<'_, T>>>;
 }
