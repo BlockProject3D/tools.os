@@ -74,7 +74,9 @@ fn handle_input(buf: &[u8], log_ch: &mpsc::Sender<InputEvent>) -> bool {
         log_ch.send(InputEvent::Delete).unwrap();
         return true;
     } else if buf[0] != 27 {
-        log_ch.send(InputEvent::Input(String::from_utf8_lossy(buf).into())).unwrap();
+        log_ch
+            .send(InputEvent::Input(String::from_utf8_lossy(buf).into()))
+            .unwrap();
         return true;
     }
     false

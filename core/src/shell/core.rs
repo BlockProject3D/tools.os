@@ -26,11 +26,11 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::sync::mpsc;
-use std::thread::JoinHandle;
 use crate::shell::input_thread::{input_thread, InputEvent};
 use crate::shell::os::{clear_remaining, get_window_size, move_cursor, write, Terminal};
 use crate::shell_println;
+use std::sync::mpsc;
+use std::thread::JoinHandle;
 
 /// Represents an event emitted from the input abstraction.
 pub enum Event {
@@ -38,7 +38,7 @@ pub enum Event {
     CommandReceived(String),
 
     /// Application exit was requested.
-    ExitRequested
+    ExitRequested,
 }
 
 /// Represents any object which can be used to send [Event] structures.
@@ -58,7 +58,7 @@ pub struct Shell {
     _os: Terminal,
     input_thread: JoinHandle<()>,
     app_thread: JoinHandle<()>,
-    _send_ch: mpsc::Sender<InputEvent>
+    _send_ch: mpsc::Sender<InputEvent>,
 }
 
 fn print_prompt(row: i32, prompt: &'static str) {
@@ -70,7 +70,7 @@ fn print_prompt(row: i32, prompt: &'static str) {
 enum Window {
     StartEnd(usize, usize),
     Start(usize),
-    Full
+    Full,
 }
 
 fn string_window(pos: usize, col: i32, prompt: &'static str, str: &str) -> Window {
@@ -100,7 +100,7 @@ fn reset_string(pos: usize, col: i32, row: i32, prompt: &'static str, str: &str)
     match window {
         Window::Start(start) => write(&str[start..]),
         Window::StartEnd(start, end) => write(&str[start..end]),
-        Window::Full => write(str)
+        Window::Full => write(str),
     }
     clear_remaining();
 }
@@ -110,11 +110,15 @@ fn move_to_pos(pos: usize, col: i32, row: i32, prompt: &'static str, str: &str) 
     match window {
         Window::StartEnd(start, _) => move_cursor((prompt.len() + (pos - start)) as _, row),
         Window::Start(start) => move_cursor((prompt.len() + (pos - start)) as _, row),
-        Window::Full => move_cursor((prompt.len() + pos) as _, row)
+        Window::Full => move_cursor((prompt.len() + pos) as _, row),
     }
 }
 
-fn application_thread<T: SendChannel>(prompt: &'static str, recv_ch: mpsc::Receiver<InputEvent>, master_send_ch: T) {
+fn application_thread<T: SendChannel>(
+    prompt: &'static str,
+    recv_ch: mpsc::Receiver<InputEvent>,
+    master_send_ch: T,
+) {
     let mut history = Vec::new();
     let mut hindex = 0;
     let mut cur_line = String::new();
@@ -174,18 +178,18 @@ fn application_thread<T: SendChannel>(prompt: &'static str, recv_ch: mpsc::Recei
                 pos = 0;
                 reset_string(pos, col, row, prompt, &cur_line);
                 move_to_pos(pos, col, row, prompt, &cur_line);
-            },
+            }
             InputEvent::LineEnd => {
                 pos = cur_line.len();
                 reset_string(pos, col, row, prompt, &cur_line);
                 move_to_pos(pos, col, row, prompt, &cur_line);
-            },
+            }
             InputEvent::Input(s) => {
                 cur_line.insert_str(pos, &s);
                 pos += s.len();
                 reset_string(pos, col, row, prompt, &cur_line);
                 move_to_pos(pos, col, row, prompt, &cur_line);
-            },
+            }
             InputEvent::Left => {
                 if pos == 0 {
                     continue;
@@ -239,7 +243,7 @@ impl Shell {
             _os: Terminal::new(),
             input_thread,
             app_thread,
-            _send_ch: send_ch
+            _send_ch: send_ch,
         }
     }
 
@@ -273,7 +277,11 @@ impl Shell {
         #[cfg(windows)]
         {
             // Cancel all pending IO operations on standard input.
-            let handle = unsafe { windows_sys::Win32::System::Console::GetStdHandle(windows_sys::Win32::System::Console::STD_INPUT_HANDLE) };
+            let handle = unsafe {
+                windows_sys::Win32::System::Console::GetStdHandle(
+                    windows_sys::Win32::System::Console::STD_INPUT_HANDLE,
+                )
+            };
             unsafe { windows_sys::Win32::System::IO::CancelIoEx(handle, std::ptr::null()) };
 
             // Join the threads.

@@ -28,7 +28,11 @@
 
 use std::cell::Cell;
 use std::mem::MaybeUninit;
-use windows_sys::Win32::System::Console::{GetConsoleMode, GetConsoleScreenBufferInfo, GetStdHandle, SetConsoleMode, WriteConsoleW, CONSOLE_MODE, CONSOLE_SCREEN_BUFFER_INFO, ENABLE_VIRTUAL_TERMINAL_PROCESSING, STD_OUTPUT_HANDLE};
+use windows_sys::Win32::System::Console::{
+    GetConsoleMode, GetConsoleScreenBufferInfo, GetStdHandle, SetConsoleMode, WriteConsoleW,
+    CONSOLE_MODE, CONSOLE_SCREEN_BUFFER_INFO, ENABLE_VIRTUAL_TERMINAL_PROCESSING,
+    STD_OUTPUT_HANDLE,
+};
 
 /// Represents an interactive terminal.
 pub struct Terminal {
@@ -50,7 +54,9 @@ impl Terminal {
             let mut attrs2 = attrs.assume_init();
             attrs2 |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
             SetConsoleMode(handle, attrs2);
-            Terminal { attrs: attrs.assume_init() }
+            Terminal {
+                attrs: attrs.assume_init(),
+            }
         }
     }
 }
@@ -70,7 +76,13 @@ pub fn write(str: &str) {
         let handle = GetStdHandle(STD_OUTPUT_HANDLE);
         let mut encoded = str.encode_utf16().collect::<Vec<_>>();
         encoded.push(0);
-        WriteConsoleW(handle, encoded.as_ptr(), (encoded.len() - 1) as _, std::ptr::null_mut(), std::ptr::null());
+        WriteConsoleW(
+            handle,
+            encoded.as_ptr(),
+            (encoded.len() - 1) as _,
+            std::ptr::null_mut(),
+            std::ptr::null(),
+        );
     }
 }
 

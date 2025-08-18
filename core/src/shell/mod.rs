@@ -28,8 +28,8 @@
 
 //! Utility module to simplify creation of simple interactive shell applications.
 
-mod input_thread;
 mod core;
+mod input_thread;
 pub mod os;
 
 pub use core::*;

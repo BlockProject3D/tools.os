@@ -27,8 +27,8 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use bp3d_os::shell::{Event, SendChannel, Shell};
-use std::sync::mpsc;
 use bp3d_os::shell_println;
+use std::sync::mpsc;
 
 struct AnnoyingRust(mpsc::Sender<Event>);
 
@@ -50,8 +50,8 @@ fn main() {
                 }
                 shell_println!("Received command: {}", command);
                 //println!();
-            },
-            Event::ExitRequested => break
+            }
+            Event::ExitRequested => break,
         }
     }
     shell.exit();

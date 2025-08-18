@@ -26,11 +26,16 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::mem::MaybeUninit;
 use super::InputEvent;
+use std::mem::MaybeUninit;
 use std::sync::mpsc;
-use windows_sys::Win32::System::Console::{GetStdHandle, ReadConsoleInputW, INPUT_RECORD, STD_INPUT_HANDLE};
-use windows_sys::Win32::UI::Input::KeyboardAndMouse::{VK_BACK, VK_LEFT, VK_RIGHT, VK_HOME, VK_END, VK_UP, VK_DOWN, VK_RETURN, VK_TAB, VK_CONTROL, VK_D, VK_C};
+use windows_sys::Win32::System::Console::{
+    GetStdHandle, ReadConsoleInputW, INPUT_RECORD, STD_INPUT_HANDLE,
+};
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
+    VK_BACK, VK_C, VK_CONTROL, VK_D, VK_DOWN, VK_END, VK_HOME, VK_LEFT, VK_RETURN, VK_RIGHT,
+    VK_TAB, VK_UP,
+};
 
 const BUF_SIZE: usize = 1;
 
@@ -41,7 +46,8 @@ pub fn input_thread(log_ch: mpsc::Sender<InputEvent>) {
     let mut is_ctrl = false;
     let mut surrogate: u32 = 0;
     loop {
-        let flag = unsafe { ReadConsoleInputW(handle, buf.as_mut_ptr(), BUF_SIZE as _, &mut eventnum) };
+        let flag =
+            unsafe { ReadConsoleInputW(handle, buf.as_mut_ptr(), BUF_SIZE as _, &mut eventnum) };
         if flag != 1 {
             break;
         }
@@ -55,7 +61,9 @@ pub fn input_thread(log_ch: mpsc::Sender<InputEvent>) {
                         is_ctrl = record.bKeyDown == 1;
                     }
                     if record.bKeyDown == 1 {
-                        if is_ctrl && (record.wVirtualKeyCode == VK_C || record.wVirtualKeyCode == VK_D) {
+                        if is_ctrl
+                            && (record.wVirtualKeyCode == VK_C || record.wVirtualKeyCode == VK_D)
+                        {
                             end = true;
                             break;
                         }
@@ -70,14 +78,22 @@ pub fn input_thread(log_ch: mpsc::Sender<InputEvent>) {
                             VK_RETURN => log_ch.send(InputEvent::NewLine).unwrap(),
                             VK_TAB => log_ch.send(InputEvent::Complete).unwrap(),
                             _ => {
-                                let val = std::char::from_u32(unsafe { record.uChar.UnicodeChar } as _);
+                                let val =
+                                    std::char::from_u32(unsafe { record.uChar.UnicodeChar } as _);
                                 match val {
-                                    Some(c) => log_ch.send(InputEvent::Input(String::from(c))).unwrap(),
+                                    Some(c) => {
+                                        log_ch.send(InputEvent::Input(String::from(c))).unwrap()
+                                    }
                                     None => {
                                         if surrogate != 0 {
-                                            let val = std::char::from_u32(surrogate | unsafe { record.uChar.UnicodeChar } as u32);
+                                            let val = std::char::from_u32(
+                                                surrogate
+                                                    | unsafe { record.uChar.UnicodeChar } as u32,
+                                            );
                                             if let Some(c) = val {
-                                                log_ch.send(InputEvent::Input(String::from(c))).unwrap();
+                                                log_ch
+                                                    .send(InputEvent::Input(String::from(c)))
+                                                    .unwrap();
                                             }
                                             surrogate = 0;
                                         } else {

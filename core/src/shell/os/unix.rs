@@ -46,14 +46,18 @@ impl crate::shell::os::Terminal {
             let mut newattrs = attrs.assume_init();
             newattrs.c_lflag &= !(libc::ICANON | libc::ECHO);
             libc::tcsetattr(0, libc::TCSANOW, &newattrs);
-            crate::shell::os::Terminal { attrs: attrs.assume_init() }
+            crate::shell::os::Terminal {
+                attrs: attrs.assume_init(),
+            }
         }
     }
 }
 
 impl Drop for crate::shell::os::Terminal {
     fn drop(&mut self) {
-        unsafe { libc::tcsetattr(0, libc::TCSANOW, &self.attrs); }
+        unsafe {
+            libc::tcsetattr(0, libc::TCSANOW, &self.attrs);
+        }
     }
 }
 
