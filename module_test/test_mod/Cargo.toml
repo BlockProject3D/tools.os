@@ -11,4 +11,4 @@ crate-type = ["rlib", "cdylib"]
 bp3d-os-build = { version = "1.0.0-rc.2.0.0", path = "../../build" }
 
 [dependencies]
-bp3d-os = { version = "1.0.0-rc.4.5.1", path = "../../core", features = ["module"] }
+bp3d-os = { version = "1.0.0-rc.4.5.2", path = "../../core", features = ["module"] }
