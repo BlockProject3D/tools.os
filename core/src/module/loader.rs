@@ -72,7 +72,10 @@ fn load_metadata(path: &Path) -> super::Result<HashMap<String, String>> {
         let mut slice = &buffer[..];
         while let Some(pos) = slice.iter().position(|v| *v == b'B') {
             let inner = &slice[pos..];
-            let end = inner.iter().position(|v| *v == 0).unwrap_or(inner.len() - 1);
+            let end = inner
+                .iter()
+                .position(|v| *v == 0)
+                .unwrap_or(inner.len() - 1);
             v.extend_from_slice(&inner[..end + 1]);
             if v[v.len() - 1] == 0 {
                 if v.starts_with(MOD_HEADER) {
