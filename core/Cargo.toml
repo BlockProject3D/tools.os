@@ -1,6 +1,6 @@
 [package]
 name = "bp3d-os"
-version = "1.0.0-rc.4.5.2"
+version = "1.0.0-rc.4.6.0"
 authors = ["Yuri Edward <yuri6037@outlook.com>"]
 edition = "2021"
 description = "Operating System tools designed for BlockProject3D"
@@ -17,6 +17,7 @@ categories = ["os"]
 # Normal dependencies
 time = { version = "0.3.37", optional = true }
 bp3d-util = { version = "2.2.0", features = [], optional = true }
+bp3d-debug = { version = "1.0.0-rc.6.2.0", optional = true }
 
 # Apple and BSD
 [target.'cfg(not(windows))'.dependencies]
@@ -44,7 +45,7 @@ fs = ["windows-sys/Win32_Storage_FileSystem", "windows-sys/Win32_Foundation"]
 assets = ["libc", "objc", "objc-foundation", "windows-sys/Win32_System_LibraryLoader", "windows-sys/Win32_Foundation"]
 cpu-info = ["raw-cpuid"]
 time = ["time/std", "windows-sys/Win32_System_Time", "windows-sys/Win32_Foundation", "windows-sys/Win32_System_SystemServices", "bp3d-util/tzif", "libc"]
-module = ["libc", "rustc_version", "bp3d-util/simple-error", "windows-sys/Win32_System_LibraryLoader"]
+module = ["libc", "rustc_version", "bp3d-util/simple-error", "windows-sys/Win32_System_LibraryLoader", "bp3d-debug"]
 shell = ["libc", "windows-sys/Win32_System_Console", "windows-sys/Win32_UI_Input", "windows-sys/Win32_UI_Input_KeyboardAndMouse", "windows-sys/Win32_System_IO"]
 
 [package.metadata.docs.rs]

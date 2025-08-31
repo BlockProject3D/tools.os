@@ -82,6 +82,20 @@ impl<'a, T> Symbol<'a, T> {
     }
 }
 
+impl<'a, T, R> Symbol<'a, extern "Rust" fn(T) -> R> {
+    /// Calls this symbol if this symbol is a function.
+    ///
+    /// # Arguments
+    ///
+    /// * `val`: argument #1.
+    ///
+    /// returns: R
+    pub fn call(&self, val: T) -> R {
+        let f: fn(T) -> R = unsafe { std::mem::transmute(self.ptr) };
+        f(val)
+    }
+}
+
 impl<'a, T, R> Symbol<'a, extern "C" fn(T) -> R> {
     /// Calls this symbol if this symbol is a function.
     ///

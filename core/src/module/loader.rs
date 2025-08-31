@@ -36,6 +36,9 @@ use std::ffi::{c_char, CStr};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use bp3d_debug::{debug, info};
+
+type DebugInit = extern "Rust" fn(engine: &'static dyn bp3d_debug::engine::Engine);
 
 /// Represents a module loader which can support loading multiple related modules.
 pub struct ModuleLoader {
@@ -146,13 +149,24 @@ unsafe fn load_lib(
     let metadata = load_metadata(path)?;
     check_metadata(&metadata, deps2)?;
     let module = Module::new(OsLibrary::load(path)?, metadata);
-    module_open(name, module.lib())?;
+    module_open(name, &module)?;
     Ok(module)
 }
 
-unsafe fn module_open<L: Library>(name: &str, lib: &L) -> super::Result<()> {
+unsafe fn module_open<L: Library>(name: &str, module: &Module<L>) -> super::Result<()> {
+    let name = module.get_metadata_key("NAME").unwrap_or(name);
+    let version = module.get_metadata_key("VERSION").unwrap_or("UNKNOWN");
+    info!("Opening module {}-{}", name, version);
+    if module.get_metadata_key("TYPE").ok_or(Error::InvalidMetadata)? == "RUST" {
+        let debug_init_name = format!("bp3d_os_module_{}_init_bp3d_debug", name);
+        if let Some(debug_init) = module.lib().load_symbol::<DebugInit>(debug_init_name)? {
+            debug!("Initializing bp3d-debug for module: {}", name);
+            debug_init.call(bp3d_debug::engine::get())
+        }
+    }
     let main_name = format!("bp3d_os_module_{}_open", name);
-    if let Some(main) = lib.load_symbol::<extern "C" fn()>(main_name)? {
+    if let Some(main) = module.lib().load_symbol::<extern "C" fn()>(main_name)? {
+        debug!("Running module_open for module: {}", name);
         main.call();
     }
     Ok(())
@@ -169,7 +183,7 @@ unsafe fn load_by_symbol<L: Library>(
         let metadata = parse_metadata(bytes)?;
         check_metadata(&metadata, deps)?;
         let module = Module::new(lib, metadata);
-        module_open(name, module.lib())?;
+        module_open(name, &module)?;
         return Ok(module);
     }
     Err(Error::NotFound(name.into()))
@@ -185,6 +199,7 @@ impl Default for ModuleLoader {
             builtins: &[],
         };
         this.add_public_dependency(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+        this.add_public_dependency("bp3d-debug", "1.0.0-rc.6.2.0");
         this
     }
 }
@@ -212,6 +227,7 @@ impl ModuleLoader {
     /// This function assumes the module to be loaded, if it exists has the correct format otherwise
     /// this function is UB.
     pub unsafe fn load_builtin(&mut self, name: &str) -> super::Result<&Module<VirtualLibrary>> {
+        debug!("Loading builtin module: {}", name);
         let name = name.replace("-", "_");
         if self.builtin_modules.contains_key(&name) {
             Ok(unsafe { self.builtin_modules.get(&name).unwrap_unchecked() })
@@ -244,6 +260,7 @@ impl ModuleLoader {
     /// This function assumes the module to be loaded, if it exists has the correct format otherwise
     /// this function is UB.
     pub unsafe fn load_self(&mut self, name: &str) -> super::Result<&Module<OsLibrary>> {
+        debug!("Loading static module: {}", name);
         let name = name.replace("-", "_");
         if self.modules.contains_key(&name) {
             unsafe { Ok(self.modules.get(&name).unwrap_unchecked()) }
@@ -275,6 +292,7 @@ impl ModuleLoader {
     /// for the module are not added with [add_public_dependency](Self::add_public_dependency),
     /// this is also UB.
     pub unsafe fn load(&mut self, name: &str) -> super::Result<&Module<OsLibrary>> {
+        debug!("Loading dynamic module: {}", name);
         let name = name.replace("-", "_");
         if self.modules.contains_key(&name) {
             Ok(self.modules.get(&name).unwrap_unchecked())
@@ -307,6 +325,7 @@ impl ModuleLoader {
     ///
     /// returns: ()
     pub fn unload(&mut self, name: &str) -> super::Result<()> {
+        debug!("Closing module: {}", name);
         let name = name.replace("-", "_");
         if self.modules.contains_key(&name) {
             let module = unsafe { self.modules.remove(&name).unwrap_unchecked() };

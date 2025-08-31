@@ -29,5 +29,5 @@
 use bp3d_os_build::ModuleMain;
 
 fn main() {
-    ModuleMain::new().add_open().add_close().build()
+    ModuleMain::new().add_open().add_close().add_bp3d_debug().build()
 }
