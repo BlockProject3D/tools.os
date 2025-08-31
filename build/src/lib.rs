@@ -26,10 +26,10 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use cargo_lock::Lockfile;
 use cargo_manifest::Manifest;
 use itertools::Itertools;
 use std::path::PathBuf;
-use cargo_lock::Lockfile;
 
 pub struct ModuleMain {
     rust_code: String,
@@ -50,10 +50,11 @@ impl ModuleMain {
         let crate_version = std::env::var("CARGO_PKG_VERSION").unwrap();
         let rustc_version = rustc_version::version().unwrap();
         let mod_const_name = format!("BP3D_OS_MODULE_{}", crate_name.to_uppercase());
-        let mut manifest_path = PathBuf::from(std::env::var_os("CARGO_MANIFEST_PATH")
-            .expect("Failed to get CARGO_MANIFEST_PATH"));
-        let package = Manifest::from_path(&manifest_path)
-            .expect("Failed to read CARGO_MANIFEST_PATH");
+        let mut manifest_path = PathBuf::from(
+            std::env::var_os("CARGO_MANIFEST_PATH").expect("Failed to get CARGO_MANIFEST_PATH"),
+        );
+        let package =
+            Manifest::from_path(&manifest_path).expect("Failed to read CARGO_MANIFEST_PATH");
         manifest_path.set_extension("lock");
         let lock_file = Lockfile::load(&manifest_path).ok();
         let deps_list = package
@@ -61,12 +62,14 @@ impl ModuleMain {
             .map(|v| {
                 v.iter()
                     .map(|(k, v)| {
-                        let dep_version = lock_file.as_ref()
+                        let dep_version = lock_file
+                            .as_ref()
                             .map(|v| v.packages.iter().find(|v| v.name.as_ref() == *k))
-                            .flatten().map(|v| &v.version);
+                            .flatten()
+                            .map(|v| &v.version);
                         match dep_version {
                             Some(v) => format!("{}={}", k, v),
-                            None => format!("{}={}", k, v.req())
+                            None => format!("{}={}", k, v.req()),
                         }
                     })
                     .join(",")
@@ -76,12 +79,14 @@ impl ModuleMain {
             "\"\0BP3D_OS_MODULE|TYPE=RUST|NAME={}|VERSION={}|RUSTC={}|DEPS={}\0\"",
             crate_name, crate_version, rustc_version, deps_list
         );
-        let rust_code = format!("
+        let rust_code = format!(
+            "
     #[unsafe(no_mangle)]
     #[allow(clippy::manual_c_str_literals)] // The string is enclosed in NULLs and apparently clippy
     // does not like that...
     static mut {mod_const_name}: *const std::ffi::c_char = {data}.as_ptr() as _;
-");
+"
+        );
         let virtual_lib = format!("
     #[allow(static_mut_refs)]
     pub static VIRTUAL_MODULE: bp3d_os::module::library::types::VirtualLibrary = bp3d_os::module::library::types::VirtualLibrary::new(\"{crate_name}\", &[

@@ -31,12 +31,12 @@ use crate::module::library::types::{OsLibrary, VirtualLibrary};
 use crate::module::library::{Library, OS_EXT};
 use crate::module::Module;
 use crate::module::RUSTC_VERSION;
+use bp3d_debug::{debug, info};
 use std::collections::HashMap;
 use std::ffi::{c_char, CStr};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use bp3d_debug::{debug, info};
 
 type DebugInit = extern "Rust" fn(engine: &'static dyn bp3d_debug::engine::Engine);
 
@@ -160,7 +160,11 @@ unsafe fn module_open<L: Library>(name: &str, module: &Module<L>) -> super::Resu
     let name = module.get_metadata_key("NAME").unwrap_or(name);
     let version = module.get_metadata_key("VERSION").unwrap_or("UNKNOWN");
     info!("Opening module {}-{}", name, version);
-    if module.get_metadata_key("TYPE").ok_or(Error::InvalidMetadata)? == "RUST" {
+    if module
+        .get_metadata_key("TYPE")
+        .ok_or(Error::InvalidMetadata)?
+        == "RUST"
+    {
         let debug_init_name = format!("bp3d_os_module_{}_init_bp3d_debug", name);
         if let Some(debug_init) = module.lib().load_symbol::<DebugInit>(debug_init_name)? {
             debug!("Initializing bp3d-debug for module: {}", name);
