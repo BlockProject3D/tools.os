@@ -88,8 +88,17 @@ simple_error! {
         /// Missing DEPS metadata key for a Rust based module.
         MissingDepsForRust => "missing DEPS metadata key for a Rust module",
 
+        /// Missing FEATURES metadata key for a Rust based module.
+        MissingFeaturesForRust => "missing FEATURES metadata key for a Rust module",
+
         /// Missing RUSTC version key for a Rust based module.
-        MissingVersionForRust => "missing RUSTC_VERSION metadata key for a Rust module",
+        MissingVersionForRust => "missing RUSTC metadata key for a Rust module",
+
+        /// Missing NAME key for a module.
+        MissingModuleName => "missing NAME metadata key",
+
+        /// Missing VERSION key for a module.
+        MissingModuleVersion => "missing VERSION metadata key",
 
         /// The given string was not UTF8.
         InvalidUtf8(Utf8Error) => "invalid utf8: {}",
@@ -103,6 +112,9 @@ simple_error! {
 
         /// Incompatible dependency API found.
         IncompatibleDep(IncompatibleDependency) => "incompatible dependency: {}",
+
+        /// Unmatched feature-set.
+        IncompatibleFeatureSet(String) => "incompatible feature-set for dependency: {}",
 
         /// An IO error.
         Io(std::io::Error) => "io error: {}",

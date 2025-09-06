@@ -44,6 +44,8 @@ mod module;
 
 pub mod library;
 
+pub mod metadata;
+
 pub use loader::ModuleLoader;
 
 pub use module::Module;

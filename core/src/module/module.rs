@@ -27,14 +27,14 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::module::library::Library;
-use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
+use crate::module::metadata::Metadata;
 
 /// This represents a module shared object.
 #[derive(Debug)]
 pub struct Module<L> {
     lib: L,
-    metadata: HashMap<String, String>,
+    metadata: Metadata,
 }
 
 impl<L> Display for Module<L> {
@@ -52,7 +52,7 @@ impl<L: Library> Module<L> {
     /// * `metadata`: module metadata.
     ///
     /// returns: Module
-    pub fn new(lib: L, metadata: HashMap<String, String>) -> Self {
+    pub fn new(lib: L, metadata: Metadata) -> Self {
         Module { lib, metadata }
     }
 

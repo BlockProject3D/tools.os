@@ -31,12 +31,13 @@ use crate::module::library::types::{OsLibrary, VirtualLibrary};
 use crate::module::library::{Library, OS_EXT};
 use crate::module::Module;
 use crate::module::RUSTC_VERSION;
-use bp3d_debug::{debug, info};
-use std::collections::HashMap;
+use bp3d_debug::{debug, info, trace};
+use std::collections::{HashMap, HashSet};
 use std::ffi::{c_char, CStr};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use crate::module::metadata::{Metadata as ModuleMetadata, Value};
 
 type DebugInit = extern "Rust" fn(engine: &'static dyn bp3d_debug::engine::Engine);
 
@@ -45,13 +46,13 @@ pub struct ModuleLoader {
     paths: Vec<PathBuf>,
     modules: HashMap<String, Module<OsLibrary>>,
     builtin_modules: HashMap<String, Module<VirtualLibrary>>,
-    deps: HashMap<String, String>,
+    deps: DepsMap,
     builtins: &'static [&'static VirtualLibrary],
 }
 
 const MOD_HEADER: &[u8] = b"BP3D_OS_MODULE|";
 
-fn parse_metadata(bytes: &[u8]) -> super::Result<HashMap<String, String>> {
+fn parse_metadata(bytes: &[u8]) -> super::Result<ModuleMetadata> {
     // Remove terminator NULL.
     let bytes = &bytes[..bytes.len() - 1];
     let mut map = HashMap::new();
@@ -62,12 +63,12 @@ fn parse_metadata(bytes: &[u8]) -> super::Result<HashMap<String, String>> {
         let pos = var.find('=').ok_or(Error::InvalidMetadata)?;
         let key = &var[..pos];
         let value = &var[pos + 1..];
-        map.insert(key.into(), value.into());
+        map.insert(key.into(), Value::new(value.into()));
     }
     Ok(map)
 }
 
-fn load_metadata(path: &Path) -> super::Result<HashMap<String, String>> {
+fn load_metadata(path: &Path) -> super::Result<ModuleMetadata> {
     let mut file = File::open(path).map_err(Error::Io)?;
     let mut buffer: [u8; 8192] = [0; 8192];
     let mut v = Vec::new();
@@ -95,11 +96,123 @@ fn load_metadata(path: &Path) -> super::Result<HashMap<String, String>> {
     Err(Error::MissingMetadata)
 }
 
+struct Dependency {
+    pub version: String,
+    pub features: Vec<String>,
+    pub negative_features: Vec<String>
+}
+
+struct DepsMap {
+    pub deps_by_module: HashMap<String, HashMap<String, Dependency>>,
+    pub module_by_dep: HashMap<String, Vec<String>>,
+    pub module_version: HashMap<String, String>,
+    pub master: HashMap<String, Dependency>,
+    dummy: HashMap<String, Dependency>,
+}
+
+impl DepsMap {
+    pub fn new() -> Self {
+        Self {
+            deps_by_module: HashMap::new(),
+            module_by_dep: HashMap::new(),
+            module_version: HashMap::new(),
+            master: HashMap::new(),
+            dummy: HashMap::new(),
+        }
+    }
+
+    pub fn add_dep(&mut self, name: String, dep: Dependency) {
+        self.master.insert(name, dep);
+    }
+
+    pub fn insert_module(&mut self, name: &Value, version: &Value, deps: &Value, features: &Value) -> super::Result<()> {
+        let mut deps3 = Vec::new();
+        let mut features1: Vec<String> = Vec::new();
+        if let Some(deps) = deps.parse_key_value_pairs() {
+            for dep in deps {
+                let (name, version) = dep?;
+                deps3.push((name, version.into()));
+            }
+        }
+        if let Some(features) = features.as_list() {
+            features1 = features.map(|v| String::from(v)).collect();
+        }
+        let name: String = name.as_str().into();
+        for (name1, _) in &deps3 {
+            self.module_by_dep.entry(name1.clone()).or_insert_with(Vec::new).push(name.clone());
+        }
+        let mut deps2= HashMap::new();
+        for (name, version) in deps3 {
+            let features = features1.iter().filter_map(|v| match v.starts_with(&name) {
+                true => Some(v.clone()),
+                false => None
+            }).collect();
+            deps2.insert(name, Dependency {
+                version,
+                features,
+                negative_features: Vec::new()
+            });
+        }
+        self.deps_by_module.insert(name.clone(), deps2);
+        self.module_version.insert(name, version.as_str().into());
+        Ok(())
+    }
+
+    pub fn get_module_by_dep(&self, name: &str) -> Option<impl Iterator<Item = &HashMap<String, Dependency>>> {
+        Some(self.module_by_dep.get(name)?.iter().map(|v| self.deps_by_module.get(v).unwrap_or(&self.dummy)))
+    }
+}
+
+fn check_deps(deps: &Value, features: &Value, deps2: &HashMap<String, Dependency>) -> super::Result<()> {
+    if let Some(deps) = deps.parse_key_value_pairs() {
+        for res in deps {
+            let (name, version) = res?;
+            if let Some(dep) = deps2.get(&name) {
+                if version != dep.version {
+                    return Err(Error::IncompatibleDep(IncompatibleDependency {
+                        name,
+                        expected_version: dep.version.clone(),
+                        actual_version: version.into(),
+                    }));
+                }
+                if let Some(features) = features.as_list() {
+                    let features: HashSet<&str> = features.filter_map(|v| match v.starts_with(&name) {
+                        true => Some(v),
+                        false => None
+                    }).collect();
+                    let mut flag = true;
+                    for feature in dep.negative_features.iter() {
+                        if features.contains(&**feature) {
+                            return Err(Error::IncompatibleFeatureSet(name));
+                        }
+                    }
+                    for feature in dep.features.iter() {
+                        if feature == "*" { //Once a '*' is received; break as this is considered
+                            // as a match all pattern.
+                            flag = false;
+                            break;
+                        }
+                        if !features.contains(&**feature) {
+                            return Err(Error::IncompatibleFeatureSet(name));
+                        }
+                    }
+                    if flag && (features.len() != dep.features.len()) {
+                        return Err(Error::IncompatibleFeatureSet(name));
+                    }
+                } else if !dep.features.is_empty() {
+                    return Err(Error::IncompatibleFeatureSet(name));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 fn check_metadata(
-    metadata: &HashMap<String, String>,
-    deps2: &mut HashMap<String, String>,
+    metadata: &ModuleMetadata,
+    deps3: &mut DepsMap,
 ) -> super::Result<()> {
-    if metadata.get("TYPE").ok_or(Error::InvalidMetadata)? == "RUST" {
+    if metadata.get("TYPE").ok_or(Error::InvalidMetadata)?.as_str() == "RUST" {
         // This symbol is optional and will not exist on C/C++ modules, only on Rust based modules.
         // The main reason the rustc version is checked on Rust modules is for interop with user
         // data types declared by other modules as well as the destructor system which isn't C/C++
@@ -110,47 +223,56 @@ fn check_metadata(
         // In rust modules this is used to ensure the module to be loaded does not present an
         // incompatible ABI with another module.
         let deps = metadata.get("DEPS").ok_or(Error::MissingDepsForRust)?;
-        if rustc_version != RUSTC_VERSION {
+        // The name of the module.
+        let module_name = metadata.get("NAME").ok_or(Error::MissingModuleName)?;
+        // The version of the module.
+        let module_version = metadata.get("VERSION").ok_or(Error::MissingModuleName)?;
+        // The list of all features enabled on all deps.
+        let features = metadata.get("FEATURES").ok_or(Error::MissingFeaturesForRust)?;
+        if rustc_version.as_str() != RUSTC_VERSION {
             //mismatch between rust versions
             return Err(Error::RustcVersionMismatch(IncompatibleRustc {
                 expected: RUSTC_VERSION,
-                actual: rustc_version.into(),
+                actual: rustc_version.as_str().into(),
             }));
         }
-        // Amazingly broken split function that cannot figure out that empty strings should be
-        // ignored...
-        if !deps.is_empty() {
-            for dep in deps.split(",") {
-                let mut iter = dep.split("=");
-                let name = iter
-                    .next()
-                    .ok_or(Error::InvalidDepFormat)?
-                    .replace("-", "_");
-                let version = iter.next().ok_or(Error::InvalidDepFormat)?;
-                if let Some(expected_version) = deps2.get(&name) {
-                    if version != expected_version {
+        check_deps(deps, features, &deps3.master)?;
+        if let Some(modules) = deps3.get_module_by_dep(module_name.as_str()) {
+            debug!("Checking dependencies for {} against other modules...", module_name.as_str());
+            for deps2 in modules {
+                check_deps(deps, features, deps2)?;
+            }
+        }
+        if let Some(deps1) = deps.parse_key_value_pairs() {
+            for res in deps1 {
+                let (name, actual_version) = res?;
+                if let Some(deps2) = deps3.deps_by_module.get(&name) {
+                    debug!("Checking dependencies for {} against module {}...", module_name.as_str(), name);
+                    let version = deps3.module_version.get(&name).unwrap();
+                    trace!("expected_version: {}, actual_version: {}", version, actual_version);
+                    if version != actual_version {
                         return Err(Error::IncompatibleDep(IncompatibleDependency {
                             name,
-                            expected_version: expected_version.into(),
-                            actual_version: version.into(),
+                            expected_version: version.clone(),
+                            actual_version: module_version.as_str().into(),
                         }));
                     }
-                } else {
-                    deps2.insert(name, version.into());
+                    check_deps(deps, features, deps2)?;
                 }
             }
         }
+        deps3.insert_module(module_name, module_version, deps, features)?;
     }
     Ok(())
 }
 
 unsafe fn load_lib(
-    deps2: &mut HashMap<String, String>,
+    deps3: &mut DepsMap,
     name: &str,
     path: &Path,
 ) -> super::Result<Module<OsLibrary>> {
     let metadata = load_metadata(path)?;
-    check_metadata(&metadata, deps2)?;
+    check_metadata(&metadata, deps3)?;
     let module = Module::new(OsLibrary::load(path)?, metadata);
     module_open(name, &module)?;
     Ok(module)
@@ -182,7 +304,7 @@ unsafe fn module_open<L: Library>(name: &str, module: &Module<L>) -> super::Resu
 unsafe fn load_by_symbol<L: Library>(
     lib: L,
     name: &str,
-    deps: &mut HashMap<String, String>,
+    deps: &mut DepsMap,
 ) -> super::Result<Module<L>> {
     let mod_const_name = format!("BP3D_OS_MODULE_{}", name.to_uppercase());
     if let Some(sym) = lib.load_symbol::<*const c_char>(mod_const_name)? {
@@ -201,12 +323,12 @@ impl Default for ModuleLoader {
         let mut this = ModuleLoader {
             paths: Default::default(),
             modules: Default::default(),
-            deps: Default::default(),
+            deps: DepsMap::new(),
             builtin_modules: Default::default(),
             builtins: &[],
         };
-        this.add_public_dependency(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
-        this.add_public_dependency("bp3d-debug", "1.0.0-rc.6.2.0");
+        this.add_public_dependency(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"), ["*"]);
+        this.add_public_dependency("bp3d-debug", "1.0.0-rc.6.2.0", ["*"]);
         this
     }
 }
@@ -376,7 +498,301 @@ impl ModuleLoader {
     /// * `version`: the version of the dependency.
     ///
     /// returns: ()
-    pub fn add_public_dependency(&mut self, name: &str, version: &str) {
-        self.deps.insert(name.replace("-", "_"), version.into());
+    pub fn add_public_dependency<'a>(&mut self, name: &str, version: &str, features: impl IntoIterator<Item = &'a str>) {
+        let mut negative_features = Vec::new();
+        let features = features.into_iter().filter_map(|s| {
+            if s.starts_with("-") {
+                negative_features.push(s.into());
+                return None;
+            }
+            if s != "*" {
+                Some(String::from(name) + s.into())
+            } else {
+                Some("*".into())
+            }
+        }).collect();
+        self.deps.add_dep(name.replace("-", "_"), Dependency {
+            version: version.into(),
+            features,
+            negative_features
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::module::loader::{check_metadata, Dependency, DepsMap};
+    use crate::module::metadata::{Metadata, Value};
+    use crate::module::RUSTC_VERSION;
+
+    #[test]
+    fn test_basic() {
+        let mut deps = DepsMap::new();
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("".into()));
+        metadata.insert("FEATURES".into(), Value::new("".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
+    }
+
+    #[test]
+    fn test_deps_no_relations() {
+        let mut deps = DepsMap::new();
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
+
+        // We have a different named module with no relation to the other, no ABI incompatibility
+        // exists.
+        metadata.insert("DEPS".into(), Value::new("a=0.1.0,b=0.2.0".into()));
+        metadata.insert("NAME".into(), Value::new("test1".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
+    }
+
+    #[test]
+    fn test_deps_with_relation_1() {
+        let mut deps = DepsMap::new();
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
+
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,test=1.0.0".into()));
+        metadata.insert("NAME".into(), Value::new("test1".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
+
+        metadata.insert("DEPS".into(), Value::new("b=2.0.0,test=1.0.0".into()));
+        metadata.insert("NAME".into(), Value::new("test2".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
+
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0,test=1.0.0".into()));
+        metadata.insert("NAME".into(), Value::new("test3".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
+
+        metadata.insert("DEPS".into(), Value::new("test=1.0.0".into()));
+        metadata.insert("NAME".into(), Value::new("test4".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
+    }
+
+    #[test]
+    fn test_deps_with_relation_2() {
+        let mut deps = DepsMap::new();
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
+
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=1.2.0,test=1.0.0".into()));
+        metadata.insert("NAME".into(), Value::new("test1".into()));
+        check_metadata(&metadata, &mut deps).unwrap_err();
+
+        metadata.insert("DEPS".into(), Value::new("a=0.1.0,test=1.0.0".into()));
+        metadata.insert("NAME".into(), Value::new("test2".into()));
+        check_metadata(&metadata, &mut deps).unwrap_err();
+    }
+
+    #[test]
+    fn test_deps_with_relation_incompatible_version() {
+        let mut deps = DepsMap::new();
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
+
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,test=0.1.0".into()));
+        metadata.insert("NAME".into(), Value::new("test1".into()));
+        check_metadata(&metadata, &mut deps).unwrap_err();
+    }
+
+    #[test]
+    fn test_deps_features() {
+        let mut deps = DepsMap::new();
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/abc,a/def".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
+
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,test=1.0.0".into()));
+        metadata.insert("NAME".into(), Value::new("test1".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/abc,a/def".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
+    }
+
+    #[test]
+    fn test_deps_features_incompatible() {
+        let mut deps = DepsMap::new();
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/abc,a/def".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
+
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,test=1.0.0".into()));
+        metadata.insert("NAME".into(), Value::new("test1".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/abc".into()));
+        check_metadata(&metadata, &mut deps).unwrap_err();
+
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0,test=1.0.0".into()));
+        metadata.insert("NAME".into(), Value::new("test3".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/abc,a/def,a/ghi".into()));
+        check_metadata(&metadata, &mut deps).unwrap_err();
+
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0,test=1.0.0".into()));
+        metadata.insert("NAME".into(), Value::new("test2".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/abc,a/def,b/ghi".into()));
+        check_metadata(&metadata, &mut deps).unwrap_err();
+    }
+
+    #[test]
+    fn test_master_1() {
+        let mut deps = DepsMap::new();
+        deps.add_dep("a".into(), Dependency {
+            version: "1.0.0".into(),
+            features: vec!["*".into()],
+            negative_features: vec![]
+        });
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/abc,a/def".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
+    }
+
+    #[test]
+    fn test_master_2() {
+        let mut deps = DepsMap::new();
+        deps.add_dep("a".into(), Dependency {
+            version: "1.0.0".into(),
+            features: vec!["a/abc".into(), "*".into()],
+            negative_features: vec![]
+        });
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/abc,a/def".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
+    }
+
+    #[test]
+    fn test_master_3() {
+        let mut deps = DepsMap::new();
+        deps.add_dep("a".into(), Dependency {
+            version: "1.0.0".into(),
+            features: vec!["a/abc".into(), "a/def".into(), "*".into()],
+            negative_features: vec![]
+        });
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/abc,a/def".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
+    }
+
+    #[test]
+    fn test_master_incompatible_version() {
+        let mut deps = DepsMap::new();
+        deps.add_dep("a".into(), Dependency {
+            version: "1.0.0".into(),
+            features: vec!["a/abc".into(), "a/def".into(), "*".into()],
+            negative_features: vec![]
+        });
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=0.1.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/abc,a/def".into()));
+        check_metadata(&metadata, &mut deps).unwrap_err();
+    }
+
+    #[test]
+    fn test_master_incompatible_feature_set_1() {
+        let mut deps = DepsMap::new();
+        deps.add_dep("a".into(), Dependency {
+            version: "1.0.0".into(),
+            features: vec!["a/abc".into(), "a/def".into(), "*".into()],
+            negative_features: vec![]
+        });
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/abc".into()));
+        check_metadata(&metadata, &mut deps).unwrap_err();
+    }
+
+    #[test]
+    fn test_master_4() {
+        let mut deps = DepsMap::new();
+        deps.add_dep("a".into(), Dependency {
+            version: "1.0.0".into(),
+            features: vec!["a/abc".into(), "*".into()],
+            negative_features: vec!["a/def".into()]
+        });
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/abc".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
+    }
+
+    #[test]
+    fn test_master_incompatible_feature_set_2() {
+        let mut deps = DepsMap::new();
+        deps.add_dep("a".into(), Dependency {
+            version: "1.0.0".into(),
+            features: vec!["a/abc".into(), "*".into()],
+            negative_features: vec!["a/def".into()]
+        });
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/abc,a/def".into()));
+        check_metadata(&metadata, &mut deps).unwrap_err();
     }
 }
