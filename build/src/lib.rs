@@ -57,6 +57,7 @@ impl ModuleMain {
             Manifest::from_path(&manifest_path).expect("Failed to read CARGO_MANIFEST_PATH");
         manifest_path.set_extension("lock");
         let lock_file = Lockfile::load(&manifest_path).ok();
+        let mut features = Vec::new();
         let deps_list = package
             .dependencies
             .map(|v| {
@@ -67,6 +68,9 @@ impl ModuleMain {
                             .map(|v| v.packages.iter().find(|v| v.name.as_ref() == *k))
                             .flatten()
                             .map(|v| &v.version);
+                        for feature in v.req_features() {
+                            features.push(format!("{}/{}", k, feature));
+                        }
                         match dep_version {
                             Some(v) => format!("{}={}", k, v),
                             None => format!("{}={}", k, v.req()),
@@ -76,8 +80,8 @@ impl ModuleMain {
             })
             .unwrap_or("".into());
         let data = format!(
-            "\"\0BP3D_OS_MODULE|TYPE=RUST|NAME={}|VERSION={}|RUSTC={}|DEPS={}\0\"",
-            crate_name, crate_version, rustc_version, deps_list
+            "\"\0BP3D_OS_MODULE|TYPE=RUST|NAME={}|VERSION={}|RUSTC={}|DEPS={}|FEATURES={}\0\"",
+            crate_name, crate_version, rustc_version, deps_list, features.join(",")
         );
         let rust_code = format!(
             "
