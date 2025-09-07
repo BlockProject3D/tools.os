@@ -28,8 +28,8 @@
 
 //! Utilities around module metadata.
 
-use std::collections::HashMap;
 use crate::module::error::Error;
+use std::collections::HashMap;
 
 /// The metadata map type.
 pub type Metadata = HashMap<String, Value>;
@@ -71,7 +71,9 @@ impl Value {
     }
 
     /// Assumes this [Value] is a list of key value pairs and return an iterator over it.
-    pub fn parse_key_value_pairs(&self) -> Option<impl Iterator<Item = super::Result<(String, &str)>>> {
+    pub fn parse_key_value_pairs(
+        &self,
+    ) -> Option<impl Iterator<Item = super::Result<(String, &str)>>> {
         Some(self.as_list()?.map(|item| {
             let mut iter = item.split("=");
             let name = iter

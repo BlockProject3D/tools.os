@@ -81,7 +81,11 @@ impl ModuleMain {
             .unwrap_or("".into());
         let data = format!(
             "\"\0BP3D_OS_MODULE|TYPE=RUST|NAME={}|VERSION={}|RUSTC={}|DEPS={}|FEATURES={}\0\"",
-            crate_name, crate_version, rustc_version, deps_list, features.join(",")
+            crate_name,
+            crate_version,
+            rustc_version,
+            deps_list,
+            features.join(",")
         );
         let rust_code = format!(
             "

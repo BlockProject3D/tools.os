@@ -27,8 +27,8 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::module::library::Library;
-use std::fmt::{Debug, Display, Formatter};
 use crate::module::metadata::Metadata;
+use std::fmt::{Debug, Display, Formatter};
 
 /// This represents a module shared object.
 #[derive(Debug)]
