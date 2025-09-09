@@ -65,8 +65,7 @@ impl ModuleMain {
                     .map(|(k, v)| {
                         let dep_version = lock_file
                             .as_ref()
-                            .map(|v| v.packages.iter().find(|v| v.name.as_ref() == *k))
-                            .flatten()
+                            .and_then(|v| v.packages.iter().find(|v| v.name.as_ref() == *k))
                             .map(|v| &v.version);
                         for feature in v.req_features() {
                             features.push(format!("{}/{}", k, feature));

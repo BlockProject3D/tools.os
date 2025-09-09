@@ -17,7 +17,7 @@ categories = ["os"]
 # Normal dependencies
 time = { version = "0.3.37", optional = true }
 bp3d-util = { version = "2.2.0", features = [], optional = true }
-bp3d-debug = { version = "1.0.0-rc.6.2.0", optional = true }
+bp3d-debug = { version = "1.0.0", optional = true }
 
 # Apple and BSD
 [target.'cfg(not(windows))'.dependencies]

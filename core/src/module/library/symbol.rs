@@ -91,7 +91,7 @@ impl<'a, T, R> Symbol<'a, extern "Rust" fn(T) -> R> {
     ///
     /// returns: R
     pub fn call(&self, val: T) -> R {
-        let f: fn(T) -> R = unsafe { std::mem::transmute(self.ptr) };
+        let f: extern "Rust" fn(T) -> R = unsafe { std::mem::transmute(self.ptr) };
         f(val)
     }
 }
@@ -105,7 +105,7 @@ impl<'a, T, R> Symbol<'a, extern "C" fn(T) -> R> {
     ///
     /// returns: R
     pub fn call(&self, val: T) -> R {
-        let f: fn(T) -> R = unsafe { std::mem::transmute(self.ptr) };
+        let f: extern "C" fn(T) -> R = unsafe { std::mem::transmute(self.ptr) };
         f(val)
     }
 }
@@ -119,7 +119,7 @@ impl<'a, T, T1, R> Symbol<'a, extern "C" fn(T, T1) -> R> {
     ///
     /// returns: R
     pub fn call(&self, val: T, val1: T1) -> R {
-        let f: fn(T, T1) -> R = unsafe { std::mem::transmute(self.ptr) };
+        let f: extern "C" fn(T, T1) -> R = unsafe { std::mem::transmute(self.ptr) };
         f(val, val1)
     }
 }
@@ -133,7 +133,7 @@ impl<'a, T, T1, T2, R> Symbol<'a, extern "C" fn(T, T1, T2) -> R> {
     ///
     /// returns: R
     pub fn call(&self, val: T, val1: T1, val2: T2) -> R {
-        let f: fn(T, T1, T2) -> R = unsafe { std::mem::transmute(self.ptr) };
+        let f: extern "C" fn(T, T1, T2) -> R = unsafe { std::mem::transmute(self.ptr) };
         f(val, val1, val2)
     }
 }
@@ -143,7 +143,7 @@ impl<'a, R> Symbol<'a, extern "C" fn() -> R> {
     ///
     /// returns: R
     pub fn call(&self) -> R {
-        let f: fn() -> R = unsafe { std::mem::transmute(self.ptr) };
+        let f: extern "C" fn() -> R = unsafe { std::mem::transmute(self.ptr) };
         f()
     }
 }

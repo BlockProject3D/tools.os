@@ -34,7 +34,7 @@ pub struct Terminal {
     attrs: libc::termios,
 }
 
-impl crate::shell::os::Terminal {
+impl Terminal {
     /// Creates a new instance of an interactive terminal.
     ///
     /// This function automatically sets-up the current OS terminal for interactive input and resets
@@ -46,14 +46,14 @@ impl crate::shell::os::Terminal {
             let mut newattrs = attrs.assume_init();
             newattrs.c_lflag &= !(libc::ICANON | libc::ECHO);
             libc::tcsetattr(0, libc::TCSANOW, &newattrs);
-            crate::shell::os::Terminal {
+            Terminal {
                 attrs: attrs.assume_init(),
             }
         }
     }
 }
 
-impl Drop for crate::shell::os::Terminal {
+impl Drop for Terminal {
     fn drop(&mut self) {
         unsafe {
             libc::tcsetattr(0, libc::TCSANOW, &self.attrs);
@@ -81,7 +81,7 @@ pub fn get_window_size() -> (i32, i32) {
 }
 
 thread_local! {
-    static HEIGHT: Cell<i32> = Cell::new(-1);
+    static HEIGHT: Cell<i32> = const { Cell::new(-1) };
 }
 
 /// Returns the maximum number of rows available in the terminal.

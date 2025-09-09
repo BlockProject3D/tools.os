@@ -58,6 +58,12 @@ pub use windows::get_window_size;
 #[cfg(windows)]
 pub use windows::get_window_height_amortized;
 
+impl Default for Terminal {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Move the terminal cursor to the given x, y position in columns and rows respectively.
 pub fn move_cursor(x: i32, y: i32) {
     write(&format!("\x1b[{};{}H", y, x + 1)) // yeah rust is broken: impossible to use octal set

@@ -141,14 +141,11 @@ impl DepsMap {
             }
         }
         if let Some(features) = features.as_list() {
-            features1 = features.map(|v| String::from(v)).collect();
+            features1 = features.map(String::from).collect();
         }
         let name: String = name.as_str().into();
         for (name1, _) in &deps3 {
-            self.module_by_dep
-                .entry(name1.clone())
-                .or_insert_with(Vec::new)
-                .push(name.clone());
+            self.module_by_dep.entry(name1.clone()).or_default().push(name.clone());
         }
         let mut deps2 = HashMap::new();
         for (name, version) in deps3 {
@@ -204,10 +201,7 @@ fn check_deps(
                 }
                 if let Some(features) = features.as_list() {
                     let features: HashSet<&str> = features
-                        .filter_map(|v| match v.starts_with(&name) {
-                            true => Some(v),
-                            false => None,
-                        })
+                        .filter(|v| v.starts_with(&name))
                         .collect();
                     let mut flag = true;
                     for feature in dep.negative_features.iter() {
@@ -368,7 +362,7 @@ impl Default for ModuleLoader {
             builtins: &[],
         };
         this.add_public_dependency(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"), ["*"]);
-        this.add_public_dependency("bp3d-debug", "1.0.0-rc.6.2.0", ["*"]);
+        this.add_public_dependency("bp3d-debug", "1.0.0", ["*"]);
         this
     }
 }
@@ -553,7 +547,7 @@ impl ModuleLoader {
                     return None;
                 }
                 if s != "*" {
-                    Some(String::from(name) + s.into())
+                    Some(String::from(name) + s)
                 } else {
                     Some("*".into())
                 }

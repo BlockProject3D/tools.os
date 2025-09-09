@@ -83,9 +83,7 @@ fn string_window(pos: usize, col: i32, prompt: &'static str, str: &str) -> Windo
             let mut end = pos + maxsize;
             while end >= str.len() {
                 end -= 1;
-                if start > 0 {
-                    start -= 1;
-                }
+                start = start.saturating_sub(1);
             }
             Window::StartEnd(start, end)
         }
@@ -145,19 +143,17 @@ fn application_thread<T: SendChannel>(
                 shell_println!("Not yet implemented");
             }
             InputEvent::HistoryPrev => {
-                if history.len() == 0 {
+                if history.is_empty() {
                     continue;
                 }
-                if hindex != 0 {
-                    hindex -= 1;
-                }
+                hindex = hindex.saturating_sub(1);
                 let msg = &history[hindex];
                 cur_line = msg.clone();
                 pos = cur_line.len();
                 reset_string(pos, col, row, prompt, &cur_line);
             }
             InputEvent::HistoryNext => {
-                if history.len() == 0 {
+                if history.is_empty() {
                     continue;
                 }
                 if hindex != history.len() {
