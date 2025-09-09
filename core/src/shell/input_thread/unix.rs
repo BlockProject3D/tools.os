@@ -90,6 +90,9 @@ pub fn input_thread(log_ch: mpsc::Sender<InputEvent>) {
         if ch == EOF {
             break;
         }
+        if idx == BUF_SIZE {
+            idx = 0;
+        }
         buf[idx] = ch as u8;
         if idx < BUF_SIZE {
             idx += 1;
