@@ -145,7 +145,10 @@ impl DepsMap {
         }
         let name: String = name.as_str().into();
         for (name1, _) in &deps3 {
-            self.module_by_dep.entry(name1.clone()).or_default().push(name.clone());
+            self.module_by_dep
+                .entry(name1.clone())
+                .or_default()
+                .push(name.clone());
         }
         let mut deps2 = HashMap::new();
         for (name, version) in deps3 {
@@ -200,9 +203,8 @@ fn check_deps(
                     }));
                 }
                 if let Some(features) = features.as_list() {
-                    let features: HashSet<&str> = features
-                        .filter(|v| v.starts_with(&name))
-                        .collect();
+                    let features: HashSet<&str> =
+                        features.filter(|v| v.starts_with(&name)).collect();
                     let mut flag = true;
                     for feature in dep.negative_features.iter() {
                         if features.contains(&**feature) {
