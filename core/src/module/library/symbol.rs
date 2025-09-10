@@ -28,6 +28,9 @@
 
 //! This module contains helpers for C module symbols.
 
+// Apparently this thing is a false positive for function pointers...
+#![allow(clippy::crosspointer_transmute)]
+
 use std::ffi::c_void;
 use std::marker::PhantomData;
 
