@@ -32,9 +32,9 @@ use objc2::class;
 use std::os::raw::c_ulong;
 use std::path::PathBuf;
 
-use crate::apple_helpers::{msg_send, ns_string_to_string};
+use crate::apple_helpers::Object;
 use crate::apple_helpers::__msg_send_parse;
-use crate::apple_helpers::{Object};
+use crate::apple_helpers::{msg_send, ns_string_to_string};
 
 pub const NS_LIBRARY_DIRECTORY: c_ulong = 5;
 pub const NS_USER_DIRECTORY: c_ulong = 7;
@@ -49,13 +49,14 @@ pub fn get_macos_dir(directory: c_ulong) -> Option<String> {
     unsafe {
         let nsfilemanager = class!(NSFileManager);
         let instance: &Object = msg_send![nsfilemanager, defaultManager];
-        let directories: &Object = msg_send![instance, URLsForDirectory:directory inDomains:NS_USER_DOMAIN_MASK];
+        let directories: &Object =
+            msg_send![instance, URLsForDirectory:directory inDomains:NS_USER_DOMAIN_MASK];
         let obj: Option<&Object> = msg_send![directories, firstObject];
         if let Some(obj) = obj {
             let str: Option<&Object> = msg_send![obj, path];
             match str {
                 Some(v) => Some(String::from(ns_string_to_string(v))),
-                None => None
+                None => None,
             }
         } else {
             None

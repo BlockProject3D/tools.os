@@ -26,14 +26,14 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::apple_helpers::__msg_send_parse;
+use crate::apple_helpers::msg_send;
+use crate::apple_helpers::{ns_string_to_string, Object};
 use libc::{strlen, PATH_MAX};
 use objc2::class;
 use std::ffi::{c_char, c_int, OsStr};
 use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
-use crate::apple_helpers::{ns_string_to_string, Object};
-use crate::apple_helpers::msg_send;
-use crate::apple_helpers::__msg_send_parse;
 
 extern "C" {
     pub fn _NSGetExecutablePath(buf: *mut c_char, bufsize: *mut u32) -> c_int;

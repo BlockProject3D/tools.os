@@ -28,17 +28,17 @@
 
 use crate::open::{Error, Result, Url};
 use objc2::class;
+use objc2::rc::Retained;
 use std::ffi::{c_char, c_double};
 use std::os::raw::c_ulong;
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
-use objc2::rc::Retained;
 
-use crate::apple_helpers::msg_send;
 use crate::apple_helpers::__msg_send_parse;
+use crate::apple_helpers::msg_send;
 use crate::apple_helpers::obj_alloc;
 use crate::apple_helpers::obj_from;
-use crate::apple_helpers::{Object, NO, BOOL};
+use crate::apple_helpers::{Object, BOOL, NO};
 
 const NS_UTF8_STRING_ENCODING: c_ulong = 4;
 
