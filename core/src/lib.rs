@@ -30,10 +30,6 @@
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 #![warn(missing_docs)]
-// This is unfortunate but objc appears to be generating a lot of these warnings and new versions
-// exists. This is a temporary workaround. The solution would most likely be to re-write objc inline
-// as crates.io forbids patches.
-#![cfg_attr(target_vendor = "apple", allow(unexpected_cfgs))]
 
 #[cfg(feature = "dirs")]
 pub mod dirs;
@@ -58,3 +54,6 @@ pub mod module;
 
 #[cfg(feature = "shell")]
 pub mod shell;
+
+#[cfg(target_vendor = "apple")]
+mod apple_helpers;
