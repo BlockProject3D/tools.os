@@ -1,4 +1,4 @@
-// Copyright (c) 2023, BlockProject 3D
+// Copyright (c) 2025, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -26,40 +26,42 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::open::Url;
+use crate::fs::get_absolute_path;
+use crate::open::{Error, Result, Url};
 use std::os::windows::ffi::OsStrExt;
 use std::path::Path;
+use windows_sys::core::PCWSTR;
 use windows_sys::Win32::UI::Shell::ShellExecuteW;
 use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOW;
-use windows_sys::core::PCWSTR;
-use crate::fs::PathExt;
 
-pub fn open(url: &Url) -> bool {
+pub fn open(url: &Url) -> Result {
     unsafe {
         let operation = ['o' as u16, 'p' as u16, 'e' as u16, 'n' as u16, 0x0000];
         let mut urlw: Vec<u16> = match url.is_path() {
-            true => {
-                let path = match Path::new(url.path()).get_absolute() {
-                    Ok(v) => v,
-                    Err(_) => return false
-                };
-                path.as_os_str().encode_wide().collect()
-            }
-            false => {
-                let s = match url.to_os_str() {
-                    Ok(v) => v,
-                    Err(_) => return false
-                };
-                s.encode_wide().collect()
-            }
+            true => get_absolute_path(Path::new(url.path()))
+                .map_err(Error::Io)?
+                .as_os_str()
+                .encode_wide()
+                .collect(),
+            false => url.to_os_str().map_err(Error::Io)?.encode_wide().collect(),
         };
         urlw.push(0x0000);
         let operation: PCWSTR = operation.as_ptr();
-        let res = ShellExecuteW(0, operation, urlw.as_ptr(), std::ptr::null_mut(), std::ptr::null_mut(), SW_SHOW as _);
-        res > 32
+        let res = ShellExecuteW(
+            std::ptr::null_mut(),
+            operation,
+            urlw.as_ptr(),
+            std::ptr::null_mut(),
+            std::ptr::null_mut(),
+            SW_SHOW as _,
+        ) as usize; //Cast as usize as INT_PTR does not exist in Rust.
+        match res > 32 {
+            true => Ok(()),
+            false => Err(Error::Io(std::io::Error::last_os_error())),
+        }
     }
 }
 
-pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(_: I) -> bool {
-    false
+pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(_: I) -> Result {
+    Err(Error::Unsupported)
 }

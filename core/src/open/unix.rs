@@ -1,4 +1,4 @@
-// Copyright (c) 2023, BlockProject 3D
+// Copyright (c) 2025, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -26,14 +26,18 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::open::Url;
-use std::ffi::OsStr;
-use zbus::{blocking::Connection, dbus_proxy, Result};
-use std::path::{Path, PathBuf};
+use crate::fs::get_absolute_path;
+use crate::open::{Error, Result as OpenResult, Url};
+use std::ffi::{OsStr, OsString};
+use std::path::Path;
 use std::process::Command;
-use crate::fs::PathExt;
+use zbus::{blocking::Connection, proxy, Result};
 
-#[dbus_proxy(default_service = "org.freedesktop.FileManager1", interface = "org.freedesktop.FileManager1", default_path = "/org/freedesktop/FileManager1")]
+#[proxy(
+    default_service = "org.freedesktop.FileManager1",
+    interface = "org.freedesktop.FileManager1",
+    default_path = "/org/freedesktop/FileManager1"
+)]
 trait FileManager {
     //This is what we want when the url is a path (file://) and a folder
     fn show_folders(&self, uris: &[&str], startup_id: &str) -> Result<()>;
@@ -42,56 +46,61 @@ trait FileManager {
     fn show_items(&self, uris: &[&str], startup_id: &str) -> Result<()>;
 }
 
-fn attempt_dbus_call(urls: &[&str], show_items: bool) -> bool {
-    let con = match Connection::session() {
-        Ok(v) => v,
-        Err(_) => return false,
-    };
-    let proxy = match FileManagerProxyBlocking::new(&con) {
-        Ok(v) => v,
-        Err(_) => return false,
-    };
+fn attempt_dbus_call(urls: &[&str], show_items: bool) -> OpenResult {
+    let con =
+        Connection::session().map_err(|e| Error::Other(format!("DBus connection error: {}", e)))?;
+    let proxy = FileManagerProxyBlocking::new(&con)
+        .map_err(|e| Error::Other(format!("DBus error: {}", e)))?;
     let res = match show_items {
         true => proxy.show_items(urls, "test"),
-        false => proxy.show_folders(urls, "test")
+        false => proxy.show_folders(urls, "test"),
     };
-    res.is_ok()
+    match res {
+        Err(e) => Err(Error::Other(format!("DBus error: {}", e)))?,
+        Ok(_) => Ok(()),
+    }
 }
 
-fn attempt_xdg_open(url: &OsStr) -> bool {
-    let res = Command::new("xdg-open")
-        .args([url])
-        .output();
-    res.is_ok()
+fn attempt_xdg_open(url: &OsStr) -> OpenResult {
+    let res = Command::new("xdg-open").args([url]).spawn();
+    match res {
+        Ok(_) => Ok(()),
+        Err(e) => match e.kind() {
+            std::io::ErrorKind::NotFound => Err(Error::Unsupported),
+            _ => Err(Error::Io(e)),
+        },
+    }
 }
 
-pub fn open(url: &Url) -> bool {
+pub fn open(url: &Url) -> OpenResult {
     let path = Path::new(url.path());
-    let uri = match url.to_os_str().ok() {
-        Some(v) => v,
-        None => return false
-    };
+    let uri = url.to_os_str().map_err(Error::Io)?;
     if !url.is_path() || !path.is_dir() {
         return attempt_xdg_open(&uri);
     }
-    let mut flag = match uri.to_str() {
+    match uri.to_str() {
         Some(v) => attempt_dbus_call(&[v], false),
-        None => false
-    };
-    if !flag {
-        flag = attempt_xdg_open(&uri);
+        None => attempt_xdg_open(&uri),
     }
-    flag
 }
 
-pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> bool {
-    let v: std::io::Result<Vec<PathBuf>> = iter.map(|v| v.get_absolute()).collect();
-    let paths: Option<Vec<&str>> = match v.as_ref() {
-        Ok(v) => v.iter().map(|v| v.as_os_str().to_str()).collect(),
-        Err(_) => return false
-    };
+pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(iter: I) -> OpenResult {
+    let v: std::io::Result<Vec<OsString>> = iter
+        .map(|v| {
+            get_absolute_path(v).map(|v| {
+                let mut s = OsString::with_capacity(v.as_os_str().len() + 7);
+                s.push("file://");
+                s.push(v.as_os_str());
+                s
+            })
+        })
+        .collect();
+    let paths = v.map_err(Error::Io)?;
+    let paths: Option<Vec<&str>> = paths.iter().map(|v| v.as_os_str().to_str()).collect();
     match paths {
         Some(v) => attempt_dbus_call(&v, true),
-        None => false
+        None => Err(Error::Other(
+            "one ore more paths contains invalid UTF-8 characters".into(),
+        )),
     }
 }

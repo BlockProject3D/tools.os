@@ -1,0 +1,17 @@
+[package]
+name = "bp3d-os-build"
+version = "1.0.0"
+authors = ["Yuri Edward <yuri6037@outlook.com>"]
+edition = "2024"
+description = "Operating System tools designed for BlockProject3D"
+license = "BSD-3-Clause"
+repository = "https://github.com/BlockProject3D/tools.os"
+readme = "../README.MD"
+keywords = ["bp3d", "tools", "os"]
+categories = ["os"]
+
+[dependencies]
+cargo-manifest = "0.19.1"
+cargo-lock = "10.1.0"
+itertools = { version = "0.14.0" }
+rustc_version = { version = "0.4.1" }

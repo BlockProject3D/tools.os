@@ -1,4 +1,4 @@
-// Copyright (c) 2023, BlockProject 3D
+// Copyright (c) 2025, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -41,7 +41,7 @@ use windows_sys::Win32::UI::Shell::{
 fn get_windows_path(folder: GUID) -> Option<PathBuf> {
     unsafe {
         let mut str: PWSTR = std::ptr::null_mut();
-        let res = SHGetKnownFolderPath(&folder, 0, 0, &mut str as _);
+        let res = SHGetKnownFolderPath(&folder, 0, std::ptr::null_mut(), &mut str as _);
         if res != S_OK {
             return None;
         }

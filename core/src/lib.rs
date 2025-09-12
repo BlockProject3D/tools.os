@@ -1,4 +1,4 @@
-// Copyright (c) 2023, BlockProject 3D
+// Copyright (c) 2025, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -42,3 +42,18 @@ pub mod open;
 
 #[cfg(feature = "fs")]
 pub mod fs;
+
+#[cfg(feature = "cpu-info")]
+pub mod cpu_info;
+
+#[cfg(feature = "time")]
+pub mod time;
+
+#[cfg(feature = "module")]
+pub mod module;
+
+#[cfg(feature = "shell")]
+pub mod shell;
+
+#[cfg(target_vendor = "apple")]
+mod apple_helpers;

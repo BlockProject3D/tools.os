@@ -26,93 +26,60 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use std::io::{Error, ErrorKind, Result};
+use crate::fs::PathUpdate;
 use std::ffi::OsStr;
+use std::io::{Error, ErrorKind, Result};
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 
-/// Hides the given path in the current platform's file explorer.
-///
-/// # Arguments
-///
-/// * `path`: the path to convert.
-///
-/// returns: Result<(), Error>
-///
-/// # Errors
-///
-/// Returns an [Error](Error) if the path couldn't be hidden.
-pub fn hide<T: AsRef<Path>>(path: T) -> Result<()> {
-    let path = path.as_ref();
+pub fn hide<T: AsRef<Path>>(r: T) -> Result<PathUpdate<T>> {
+    let path = r.as_ref();
     if !path.exists() {
         return Err(Error::new(ErrorKind::NotFound, "file or directory found"));
     }
     if let Some(str) = path.file_name() {
         let bytes = str.as_bytes();
         if bytes[0] == b'.' {
-            return Ok(()); //path is already hidden.
+            return Ok(PathUpdate::Unchanged(r)); //path is already hidden.
         }
         let mut vec = bytes.to_vec();
         vec.insert(0, b'.');
         let mut copy: PathBuf = path.into();
         copy.set_file_name(OsStr::from_bytes(&vec));
-        return std::fs::rename(path, copy);
+        return std::fs::rename(path, &copy).map(|_| PathUpdate::Changed(copy));
     }
-    Err(Error::new(ErrorKind::InvalidInput, "the path does not have a file name"))
+    Err(Error::new(
+        ErrorKind::InvalidInput,
+        "the path does not have a file name",
+    ))
 }
 
-/// Un-hides the given path in the current platform's file explorer.
-///
-/// # Arguments
-///
-/// * `path`: the path to convert.
-///
-/// returns: Result<(), Error>
-///
-/// # Errors
-///
-/// Returns an [Error](Error) if the path couldn't be un-hidden.
-pub fn unhide<T: AsRef<Path>>(path: T) -> Result<()> {
-    let path = path.as_ref();
+pub fn show<T: AsRef<Path>>(r: T) -> Result<PathUpdate<T>> {
+    let path = r.as_ref();
     if !path.exists() {
         return Err(Error::new(ErrorKind::NotFound, "file or directory found"));
     }
     if let Some(str) = path.file_name() {
         let bytes = str.as_bytes();
         if bytes[0] != b'.' {
-            return Ok(()); //path is already visible.
+            return Ok(PathUpdate::Unchanged(r)); //path is already visible.
         }
         let mut vec = bytes.to_vec();
         vec.remove(0); //remove the '.' character from the file name.
         let mut copy: PathBuf = path.into();
         copy.set_file_name(OsStr::from_bytes(&vec));
-        return std::fs::rename(path, copy);
+        return std::fs::rename(path, &copy).map(|_| PathUpdate::Changed(copy));
     }
-    Err(Error::new(ErrorKind::InvalidInput, "the path does not have a file name"))
+    Err(Error::new(
+        ErrorKind::InvalidInput,
+        "the path does not have a file name",
+    ))
 }
 
-/// Converts a path to an absolute path.
-///
-/// # Arguments
-///
-/// * `path`: the path to convert.
-///
-/// returns: Result<PathBuf, Error>
-///
-/// # Errors
-///
-/// Returns an [Error](Error) if the path couldn't be converted to an absolute path.
 pub fn get_absolute_path<T: AsRef<Path>>(path: T) -> Result<PathBuf> {
     std::fs::canonicalize(path)
 }
 
-/// Checks if a given path is hidden.
-///
-/// # Arguments
-///
-/// * `path`: the path to check.
-///
-/// returns: bool
 pub fn is_hidden<T: AsRef<Path>>(path: T) -> bool {
     if let Some(str) = path.as_ref().file_name() {
         let bytes = str.as_bytes();

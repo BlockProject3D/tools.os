@@ -36,25 +36,25 @@ use std::path::PathBuf;
 mod apple_shared;
 #[cfg(target_os = "ios")]
 mod ios;
+#[cfg(target_os = "macos")]
+mod macos;
 #[cfg(all(
     unix,
     not(any(target_os = "macos", target_os = "ios", target_os = "android"))
 ))]
 mod unix;
-#[cfg(target_os = "macos")]
-mod macos;
 #[cfg(windows)]
 mod windows;
 
 #[cfg(target_os = "ios")]
 use ios as _impl;
+#[cfg(target_os = "macos")]
+use macos as _impl;
 #[cfg(all(
     unix,
     not(any(target_os = "macos", target_os = "ios", target_os = "android"))
 ))]
 use unix as _impl;
-#[cfg(target_os = "macos")]
-use macos as _impl;
 #[cfg(windows)]
 use windows as _impl;
 
@@ -88,7 +88,7 @@ pub fn get_app_config() -> Option<PathBuf> {
     _impl::get_app_config()
 }
 
-/// Returns the user's config directory where all applications should store configurations.
+/// Returns the user's data directory where all applications should store private data.
 ///
 /// # Platform specific behavior
 ///
@@ -169,13 +169,13 @@ pub fn get_user_documents() -> Option<PathBuf> {
 ///
 /// # Platform specific behavior
 ///
-/// | System               | Directory Name         | Usual path                  |
-/// |----------------------|------------------------|-----------------------------|
-/// | macOS                | NS_DOWNLOADS_DIRECTORY | /Users/{username}/Downloads |
-/// | macOS (with sandbox) | None                   | None                        |
-/// | iOS                  | None                   | None                        |
-/// | Linux                | XDG_DOWNLOAD_DIR       | /home/{username}            |
-/// | Windows              | FOLDERID_Downloads     | C:\Users\{username}         |
+/// | System               | Directory Name         | Usual path                    |
+/// |----------------------|------------------------|-------------------------------|
+/// | macOS                | NS_DOWNLOADS_DIRECTORY | /Users/{username}/Downloads   |
+/// | macOS (with sandbox) | None                   | None                          |
+/// | iOS                  | None                   | None                          |
+/// | Linux                | XDG_DOWNLOAD_DIR       | /home/{username}/Downloads    |
+/// | Windows              | FOLDERID_Downloads     | C:\Users\{username}\Downloads |
 pub fn get_user_downloads() -> Option<PathBuf> {
     _impl::get_user_downloads()
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2023, BlockProject 3D
+// Copyright (c) 2025, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -28,14 +28,13 @@
 
 #![allow(dead_code)] //Allow unused functions and constants to stop rust complaining on iOS.
 
-use objc::class;
-use objc::msg_send;
-use objc::runtime::Object;
-use objc::sel;
-use objc::sel_impl;
-use objc_foundation::{INSArray, INSString, NSArray, NSObject, NSString};
+use objc2::class;
 use std::os::raw::c_ulong;
 use std::path::PathBuf;
+
+use crate::apple_helpers::Object;
+use crate::apple_helpers::__msg_send_parse;
+use crate::apple_helpers::{msg_send, ns_string_to_string};
 
 pub const NS_LIBRARY_DIRECTORY: c_ulong = 5;
 pub const NS_USER_DIRECTORY: c_ulong = 7;
@@ -49,18 +48,16 @@ const NS_USER_DOMAIN_MASK: c_ulong = 1;
 pub fn get_macos_dir(directory: c_ulong) -> Option<String> {
     unsafe {
         let nsfilemanager = class!(NSFileManager);
-        let instance: *mut Object = msg_send![nsfilemanager, defaultManager];
-        let directories: *const NSArray<NSObject> =
+        let instance: &Object = msg_send![nsfilemanager, defaultManager];
+        let directories: &Object =
             msg_send![instance, URLsForDirectory:directory inDomains:NS_USER_DOMAIN_MASK];
-        if let Some(obj) = (*directories).first_object() {
-            let str: *const NSString = msg_send![obj, path];
-            if str.is_null() {
-                return None;
+        let obj: Option<&Object> = msg_send![directories, firstObject];
+        if let Some(obj) = obj {
+            let str: Option<&Object> = msg_send![obj, path];
+            match str {
+                Some(v) => Some(String::from(ns_string_to_string(v))),
+                None => None,
             }
-            let data = (*str).as_str();
-            let copy = String::from(data);
-            // do not release array as array is still owned by Foundation
-            Some(copy)
         } else {
             None
         }

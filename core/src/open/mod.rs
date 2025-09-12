@@ -29,6 +29,7 @@
 //! This module provides cross-platform functions to open files, urls and select files in the file
 //! explorer.
 
+mod error;
 mod url;
 
 #[cfg(target_os = "macos")]
@@ -55,7 +56,8 @@ use unix as _impl;
 #[cfg(target_os = "windows")]
 use windows as _impl;
 
-pub use url::{Url, InvalidUrl};
+pub use error::{Error, Result};
+pub use url::{InvalidUrl, Url};
 
 /// Open a file explorer selecting the different files given as iterator.
 ///
@@ -79,7 +81,7 @@ pub use url::{Url, InvalidUrl};
 ///
 ///   **Note: Not all file explorers are created equal under Linux, so the behavior of this
 ///   function depends on the file explorer.**
-pub fn show_in_files<'a, I: Iterator<Item = &'a std::path::Path>>(iter: I) -> bool {
+pub fn show_in_files<'a, I: Iterator<Item = &'a std::path::Path>>(iter: I) -> Result {
     _impl::show_in_files(iter)
 }
 
@@ -104,6 +106,6 @@ pub fn show_in_files<'a, I: Iterator<Item = &'a std::path::Path>>(iter: I) -> bo
 /// * `url`: the URL to open.
 ///
 /// returns: bool
-pub fn open<'a, T: Into<Url<'a>>>(url: T) -> bool {
+pub fn open<'a, T: Into<Url<'a>>>(url: T) -> Result {
     _impl::open(&url.into())
 }

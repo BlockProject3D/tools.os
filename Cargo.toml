@@ -1,5 +1,9 @@
 [workspace]
 members = [
+    "build",
     "core",
-    "testbin"
+    "testbin",
+    "module_test/test_mod",
+    "module_test/testbin",
+    "shelltestbin"
 ]

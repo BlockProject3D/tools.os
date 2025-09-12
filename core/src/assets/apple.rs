@@ -1,4 +1,4 @@
-// Copyright (c) 2023, BlockProject 3D
+// Copyright (c) 2025, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -26,13 +26,14 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::apple_helpers::__msg_send_parse;
+use crate::apple_helpers::msg_send;
+use crate::apple_helpers::{ns_string_to_string, Object};
 use libc::{strlen, PATH_MAX};
+use objc2::class;
 use std::ffi::{c_char, c_int, OsStr};
 use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
-use objc::{class, msg_send, sel, sel_impl};
-use objc::runtime::Object;
-use objc_foundation::{INSString, NSString};
 
 extern "C" {
     pub fn _NSGetExecutablePath(buf: *mut c_char, bufsize: *mut u32) -> c_int;
@@ -58,7 +59,7 @@ pub fn get_exe_path() -> Option<PathBuf> {
             return None;
         }
         let len = strlen(buf.as_ptr());
-        let str = OsStr::from_bytes(std::mem::transmute(&buf[..len as usize]));
+        let str = OsStr::from_bytes(std::mem::transmute(&buf[..len]));
         Some(PathBuf::from(str))
     }
 }
@@ -66,14 +67,10 @@ pub fn get_exe_path() -> Option<PathBuf> {
 pub fn get_resources_dir() -> Option<PathBuf> {
     unsafe {
         let nsbundle = class!(NSBundle);
-        let bundle: *mut Object = msg_send![nsbundle, mainBundle];
-        if bundle.is_null() {
-            return None;
-        }
-        let str: *const NSString = msg_send![bundle, resourcePath];
-        if str.is_null() {
-            return None;
-        }
-        Some(PathBuf::from((*str).as_str()))
+        let bundle: Option<&Object> = msg_send![nsbundle, mainBundle];
+        let bundle = bundle?;
+        let str: Option<&Object> = msg_send![bundle, resourcePath];
+        let str = str?;
+        Some(PathBuf::from(ns_string_to_string(str)))
     }
 }

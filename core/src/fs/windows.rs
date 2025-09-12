@@ -26,27 +26,19 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::fs::PathUpdate;
+use std::ffi::OsString;
 use std::io::{Error, ErrorKind, Result};
-use std::os::windows::ffi::OsStrExt;
+use std::os::windows::ffi::{OsStrExt, OsStringExt};
 use std::path::{Path, PathBuf};
-use windows_sys::Win32::Storage::FileSystem::SetFileAttributesW;
-use windows_sys::Win32::Storage::FileSystem::GetFileAttributesW;
-use windows_sys::Win32::Storage::FileSystem::FILE_ATTRIBUTE_HIDDEN;
-use windows_sys::Win32::Storage::FileSystem::INVALID_FILE_ATTRIBUTES;
+use windows_sys::Win32::Foundation::MAX_PATH;
+use windows_sys::Win32::Storage::FileSystem::{
+    GetFileAttributesW, GetFullPathNameW, SetFileAttributesW, FILE_ATTRIBUTE_HIDDEN,
+    INVALID_FILE_ATTRIBUTES,
+};
 
-/// Hides the given path in the current platform's file explorer.
-///
-/// # Arguments
-///
-/// * `path`: the path to convert.
-///
-/// returns: Result<(), Error>
-///
-/// # Errors
-///
-/// Returns an [Error](Error) if the path couldn't be hidden.
-pub fn hide<T: AsRef<Path>>(path: T) -> Result<()> {
-    let path = path.as_ref();
+pub fn hide<T: AsRef<Path>>(r: T) -> Result<PathUpdate<T>> {
+    let path = r.as_ref();
     if !path.exists() {
         return Err(Error::new(ErrorKind::NotFound, "file or directory found"));
     }
@@ -60,24 +52,13 @@ pub fn hide<T: AsRef<Path>>(path: T) -> Result<()> {
         if SetFileAttributesW(file.as_ptr(), attrs | FILE_ATTRIBUTE_HIDDEN) == 0 {
             Err(Error::last_os_error())
         } else {
-            Ok(())
+            Ok(PathUpdate::Unchanged(r))
         }
     }
 }
 
-/// Un-hides the given path in the current platform's file explorer.
-///
-/// # Arguments
-///
-/// * `path`: the path to convert.
-///
-/// returns: Result<(), Error>
-///
-/// # Errors
-///
-/// Returns an [Error](Error) if the path couldn't be un-hidden.
-pub fn unhide<T: AsRef<Path>>(path: T) -> Result<()> {
-    let path = path.as_ref();
+pub fn show<T: AsRef<Path>>(r: T) -> Result<PathUpdate<T>> {
+    let path = r.as_ref();
     if !path.exists() {
         return Err(Error::new(ErrorKind::NotFound, "file or directory found"));
     }
@@ -91,36 +72,47 @@ pub fn unhide<T: AsRef<Path>>(path: T) -> Result<()> {
         if SetFileAttributesW(file.as_ptr(), attrs & !FILE_ATTRIBUTE_HIDDEN) == 0 {
             Err(Error::last_os_error())
         } else {
-            Ok(())
+            Ok(PathUpdate::Unchanged(r))
         }
     }
 }
 
-/// Converts a path to an absolute path.
-///
-/// This function will try it's best to avoid using UNC paths which aren't supported by all
-/// applications.
-///
-/// # Arguments
-///
-/// * `path`: the path to convert.
-///
-/// returns: Result<PathBuf, Error>
-///
-/// # Errors
-///
-/// Returns an [Error](Error) if the path couldn't be converted to an absolute path.
 pub fn get_absolute_path<T: AsRef<Path>>(path: T) -> Result<PathBuf> {
-    dunce::canonicalize(path)
+    let mut file: Vec<u16> = path.as_ref().as_os_str().encode_wide().collect();
+    file.push(0x0000);
+    unsafe {
+        let mut buffer: [u16; MAX_PATH as _] = [0; MAX_PATH as _];
+        let len = GetFullPathNameW(
+            file.as_ptr(),
+            MAX_PATH,
+            &mut buffer as _,
+            std::ptr::null_mut(),
+        );
+        if len == 0 {
+            //Error
+            return Err(Error::last_os_error());
+        }
+        let s = match len > MAX_PATH {
+            true => {
+                let mut buffer: Vec<u16> = vec![0; len as usize + 4];
+                buffer[0] = b'\\' as _;
+                buffer[1] = b'\\' as _;
+                buffer[2] = b'?' as _;
+                buffer[3] = b'\\' as _;
+                GetFullPathNameW(
+                    file.as_ptr(),
+                    len,
+                    (&mut buffer[4..]).as_mut_ptr(),
+                    std::ptr::null_mut(),
+                );
+                OsString::from_wide(&buffer)
+            }
+            false => OsString::from_wide(&buffer[..len as _]),
+        };
+        Ok(PathBuf::from(s))
+    }
 }
 
-/// Checks if a given path is hidden.
-///
-/// # Arguments
-///
-/// * `path`: the path to check.
-///
-/// returns: bool
 pub fn is_hidden<T: AsRef<Path>>(path: T) -> bool {
     let path = path.as_ref();
     if !path.exists() {

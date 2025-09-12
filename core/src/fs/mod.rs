@@ -36,69 +36,232 @@ mod unix;
 mod windows;
 
 #[cfg(unix)]
-pub use unix::{get_absolute_path, hide, unhide, is_hidden};
+use unix as _impl;
 
 #[cfg(windows)]
-pub use windows::{get_absolute_path, hide, unhide, is_hidden};
+use windows as _impl;
 
-/// Extension trait for [Path](std::path::Path) for common functionality in BP3D software.
-pub trait PathExt {
-    /// Ensures the given extension is present on a [Path](std::path::Path). Reallocates a new
-    /// [PathBuf](std::path::PathBuf) if no extension is present or that the extension is incorrect.
-    fn ensure_extension<S: AsRef<std::ffi::OsStr>>(&self, extension: S) -> std::borrow::Cow<std::path::Path>;
+/// The result of hide and show.
+pub enum PathUpdate<T: AsRef<std::path::Path>> {
+    /// Indicates that the source path was changed.
+    Changed(std::path::PathBuf),
 
-    /// Converts this path to an absolute path.
-    ///
-    /// On Windows, this function will try it's best to avoid using UNC paths which aren't
-    /// supported by all applications.
-    ///
-    /// returns: Result<PathBuf, Error>
-    ///
-    /// # Errors
-    ///
-    /// Returns an [Error](std::io::Error) if the path couldn't be converted to an absolute path.
-    fn get_absolute(&self) -> std::io::Result<std::path::PathBuf>;
+    /// Indicates that the source path was returned as-is with no changes.
+    Unchanged(T),
 }
 
-impl PathExt for std::path::Path {
-    fn ensure_extension<S: AsRef<std::ffi::OsStr>>(&self, extension: S) -> std::borrow::Cow<std::path::Path> {
-        if let Some(ext) = self.extension() {
-            if ext == extension.as_ref() {
-                self.into()
-            } else {
-                let mut buf = self.to_path_buf();
-                buf.set_extension(extension);
-                buf.into()
-            }
+impl<T: AsRef<std::path::Path>> AsRef<std::path::Path> for PathUpdate<T> {
+    fn as_ref(&self) -> &std::path::Path {
+        match self {
+            PathUpdate::Changed(v) => v.as_ref(),
+            PathUpdate::Unchanged(v) => v.as_ref(),
+        }
+    }
+}
+
+impl<T: AsRef<std::path::Path>> std::ops::Deref for PathUpdate<T> {
+    type Target = std::path::Path;
+
+    fn deref(&self) -> &std::path::Path {
+        self.as_ref()
+    }
+}
+
+/// Converts a path to an absolute path.
+///
+/// NOTE: Unlike [canonicalize](std::fs::canonicalize) the paths returned by this function may not
+/// always be normalized.
+///
+/// # Platform specific behavior
+///
+/// - On Unix, this function redirects to [canonicalize](std::fs::canonicalize).
+///
+/// - On Windows, contrary to [canonicalize](std::fs::canonicalize) which always normalizes the
+///   input path to UNC, this function will try it's best to avoid using UNC paths which aren't
+///   supported by all applications, including some built-in applications. Currently, the function
+///   calls the *GetFullPathNameW* API.
+///
+/// # Arguments
+///
+/// * `path`: the path to convert.
+///
+/// returns: Result<PathBuf, Error>
+///
+/// # Errors
+///
+/// Returns an [Error](std::io::Error) if the path couldn't be converted to an absolute path.
+pub fn get_absolute_path<T: AsRef<std::path::Path>>(
+    path: T,
+) -> std::io::Result<std::path::PathBuf> {
+    _impl::get_absolute_path(path)
+}
+
+/// Checks if a given path is hidden.
+///
+/// # Platform specific behavior
+///
+/// - On Unix, this function returns true when the given path has a '.' prefix.
+///
+/// - On Windows, this function return true when GetFileAttributesW succeeds and that the file
+///   attributes contains the attribute *FILE_ATTRIBUTE_HIDDEN*.
+///
+/// # Arguments
+///
+/// * `path`: the path to check.
+///
+/// returns: bool
+pub fn is_hidden<T: AsRef<std::path::Path>>(path: T) -> bool {
+    _impl::is_hidden(path)
+}
+
+/// Hides the given path in the current platform's file explorer.
+///
+/// # Platform specific behavior
+///
+/// - On Unix, this function prefixes the path with a '.' and returns [Changed](PathUpdate::Changed)
+///   if it does not already have one. If the path already has the prefix, the function returns
+///   [Unchanged](PathUpdate::Unchanged).
+///
+/// - On Windows, this function calls *GetFileAttributesW* and *SetFileAttributesW* with the
+///   *FILE_ATTRIBUTE_HIDDEN* attribute. Because windows uses file attributes to define if a
+///   file should be visible, the function always returns [Unchanged](PathUpdate::Unchanged).
+///
+/// # Arguments
+///
+/// * `path`: the path to convert.
+///
+/// returns: Result<(), Error>
+///
+/// # Errors
+///
+/// Returns an [Error](std::io::Error) if the path couldn't be hidden.
+pub fn hide<T: AsRef<std::path::Path>>(path: T) -> std::io::Result<PathUpdate<T>> {
+    _impl::hide(path)
+}
+
+/// Shows the given path in the current platform's file explorer.
+///
+/// # Platform specific behavior
+///
+/// - On Unix, this function removes the '.' prefix from the given path and returns
+///   [Changed](PathUpdate::Changed) if it does have it. If the path does not already has the
+///   prefix, the function returns [Unchanged](PathUpdate::Unchanged).
+///
+/// - On Windows, this function calls *GetFileAttributesW* and *SetFileAttributesW* and removes the
+///   *FILE_ATTRIBUTE_HIDDEN* attribute. Because windows uses file attributes to define if a file
+///   should be visible, the function always returns [Unchanged](PathUpdate::Unchanged).
+///
+/// # Arguments
+///
+/// * `path`: the path to convert.
+///
+/// returns: Result<(), Error>
+///
+/// # Errors
+///
+/// Returns an [Error](std::io::Error) if the path couldn't be un-hidden.
+pub fn show<T: AsRef<std::path::Path>>(path: T) -> std::io::Result<PathUpdate<T>> {
+    _impl::show(path)
+}
+
+/// Copy options.
+#[derive(Default)]
+pub struct CopyOptions<'a> {
+    overwrite: bool,
+    excludes: Vec<&'a std::ffi::OsStr>,
+}
+
+impl<'a> CopyOptions<'a> {
+    /// Creates a new default filled instance of [CopyOptions].
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Sets whether overwriting existing files is accepted.
+    /// The default is to not allow overwriting files.
+    ///
+    /// # Arguments
+    ///
+    /// * `overwrite`: true to allow overwriting files, false otherwise.
+    ///
+    /// returns: &mut CopyOptions
+    pub fn overwrite(&mut self, overwrite: bool) -> &mut Self {
+        self.overwrite = overwrite;
+        self
+    }
+
+    /// Adds a file name or folder name to be excluded from the copy operation.
+    ///
+    /// # Arguments
+    ///
+    /// * `name`: the file or folder name to exclude.
+    ///
+    /// returns: &mut CopyOptions
+    pub fn exclude(&mut self, name: &'a std::ffi::OsStr) -> &mut Self {
+        self.excludes.push(name);
+        self
+    }
+}
+
+/// Copy a file or a folder.
+///
+/// # Usage
+///
+/// | src  |  dst | result                                         |
+/// | ---- | ---- | ---------------------------------------------- |
+/// | file | file | copy src into dst using [copy](std::fs::copy). |
+/// | file | dir  | copy src into dst/file_name.                   |
+/// | dir  | file | error.                                         |
+/// | dir  | dir  | deep copy of the content of src into dst.      |
+///
+/// # Arguments
+///
+/// * `src`:
+/// * `dst`:
+///
+/// returns: Result<(), Error>
+pub fn copy<'a>(
+    src: &std::path::Path,
+    dst: &std::path::Path,
+    options: impl std::borrow::Borrow<CopyOptions<'a>>,
+) -> std::io::Result<()> {
+    let options = options.borrow();
+    if src
+        .file_name()
+        .map(|v| options.excludes.contains(&v))
+        .unwrap_or(false)
+    {
+        // No error but file is to be excluded so don't copy.
+        return Ok(());
+    }
+    if src.is_file() {
+        if dst.is_dir() {
+            let name = src.file_name().ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid source file")
+            })?;
+            return copy(src, &dst.join(name), options);
         } else {
-            self.with_extension(extension).into()
+            if dst.is_file() && !options.overwrite {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "overwriting files is not allowed",
+                ));
+            }
+            return std::fs::copy(src, dst).map(|_| ());
         }
     }
-
-    fn get_absolute(&self) -> std::io::Result<std::path::PathBuf> {
-        get_absolute_path(self)
+    if dst.is_file() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotADirectory,
+            "a directory is needed to copy a directory",
+        ));
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::fs::PathExt;
-    use std::borrow::Cow;
-    use std::path::Path;
-
-    #[test]
-    fn basic() {
-        let wrong_ext = Path::new("myfile.txt");
-        let no_ext = Path::new("myfile");
-        let correct_ext = Path::new("myfile.bpx");
-        let wrong_ext_corrected = wrong_ext.ensure_extension("bpx");
-        let no_ext_corrected = no_ext.ensure_extension("bpx");
-        let correct_ext_corrected = correct_ext.ensure_extension("bpx");
-        if let Cow::Owned(_) = correct_ext_corrected {
-            panic!("If the extension is already correct no allocation should be performed")
-        }
-        assert_eq!(&wrong_ext_corrected, Path::new("myfile.bpx"));
-        assert_eq!(&no_ext_corrected, Path::new("myfile.bpx"));
-        assert_eq!(&correct_ext_corrected, Path::new("myfile.bpx"));
+    if !dst.exists() {
+        std::fs::create_dir(dst)?;
     }
+    for v in std::fs::read_dir(src)? {
+        let entry = v?;
+        copy(&entry.path(), &dst.join(entry.file_name()), options)?;
+    }
+    Ok(())
 }

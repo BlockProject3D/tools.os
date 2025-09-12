@@ -26,15 +26,15 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::open::Url;
+use crate::open::{Error, Result, Url};
 use std::path::Path;
 
-pub fn open(_: &Url) -> bool {
+pub fn open(_: &Url) -> Result {
     //TODO: Check Apple docs if there's any way to do this on iOS.
-    false
+    Err(Error::Unsupported)
 }
 
-pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(_: I) -> bool {
+pub fn show_in_files<'a, I: Iterator<Item = &'a Path>>(_: I) -> Result {
     //Unsupported on iOS
-    false
+    Err(Error::Unsupported)
 }

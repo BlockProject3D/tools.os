@@ -1,4 +1,4 @@
-// Copyright (c) 2023, BlockProject 3D
+// Copyright (c) 2025, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -28,25 +28,35 @@
 
 //! This module provides cross-platform functions to get various system paths.
 
-use once_cell::sync::OnceCell;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
+use std::sync::OnceLock;
 
+pub use self::path::AppPath;
+
+mod path;
 pub mod system;
 
-/// Represents all possible errors when requesting app directories.
-pub enum Error {
-    /// The system is missing an application data directory.
-    MissingDataDir,
+//TODO: Remove once once_cell_try feature is stabilized.
+mod sealing {
+    use std::sync::OnceLock;
 
-    /// An io error has occurred while created some directory.
-    Io(std::io::Error),
-}
+    pub trait CellExt<T> {
+        fn get_or_try_set<E>(&self, f: impl Fn() -> Result<T, E>) -> Result<&T, E>;
+    }
 
-impl From<std::io::Error> for Error {
-    fn from(err: std::io::Error) -> Self {
-        Self::Io(err)
+    impl<T> CellExt<T> for OnceLock<T> {
+        fn get_or_try_set<E>(&self, f: impl Fn() -> Result<T, E>) -> Result<&T, E> {
+            if let Some(value) = self.get() {
+                Ok(value)
+            } else {
+                let value = f()?;
+                Ok(self.get_or_init(|| value))
+            }
+        }
     }
 }
+
+use sealing::CellExt;
 
 /// Represents the application's directories.
 ///
@@ -55,13 +65,15 @@ impl From<std::io::Error> for Error {
 /// These APIs will fail as last resort. If they fail it usually means the system has a problem.
 /// The system may also include specific configuration to break applications on purpose,
 /// in which case these APIs will also fail.
+///
+/// These APIs do not automatically create the directories, instead they return a matching instance of [AppPath](AppPath).
 pub struct App<'a> {
     name: &'a str,
-    data: OnceCell<PathBuf>,
-    cache: OnceCell<PathBuf>,
-    docs: OnceCell<PathBuf>,
-    logs: OnceCell<PathBuf>,
-    config: OnceCell<PathBuf>,
+    data: OnceLock<PathBuf>,
+    cache: OnceLock<PathBuf>,
+    docs: OnceLock<PathBuf>,
+    logs: OnceLock<PathBuf>,
+    config: OnceLock<PathBuf>,
 }
 
 impl<'a> App<'a> {
@@ -75,36 +87,25 @@ impl<'a> App<'a> {
     pub fn new(name: &'a str) -> App<'a> {
         App {
             name,
-            data: OnceCell::new(),
-            cache: OnceCell::new(),
-            docs: OnceCell::new(),
-            logs: OnceCell::new(),
-            config: OnceCell::new(),
+            data: OnceLock::new(),
+            cache: OnceLock::new(),
+            docs: OnceLock::new(),
+            logs: OnceLock::new(),
+            config: OnceLock::new(),
         }
     }
 
     /// Returns the path to this application's files.
     ///
     /// Use this directory to store any information not intended to be user accessible.
-    ///
-    /// # Errors
-    ///
-    /// Returns a [MissingDataDir](self::Error::MissingDataDir) if this system doesn't have any application
-    /// writable location; this should never occur on any supported system except if such system is broken.
-    ///
-    /// Returns an [Io](self::Error::Io) if some directory couldn't be created.
-    pub fn get_data(&self) -> Result<&Path, Error> {
+    /// Returns None if this system doesn't have any application writable location; this should
+    /// never occur on any supported system except if such system is broken.
+    pub fn get_data(&self) -> Option<AppPath<'_>> {
         self.data
-            .get_or_try_init(|| {
-                let data = system::get_app_data()
-                    .ok_or(Error::MissingDataDir)?
-                    .join(self.name);
-                if !data.is_dir() {
-                    std::fs::create_dir_all(&data)?;
-                }
-                Ok(data)
-            })
+            .get_or_try_set(|| system::get_app_data().ok_or(()).map(|v| v.join(self.name)))
+            .ok()
             .map(|v| v.as_ref())
+            .map(AppPath::new)
     }
 
     /// Returns the path to this application's cache.
@@ -112,24 +113,18 @@ impl<'a> App<'a> {
     /// Use this directory to store cached files such as downloads, intermediate files, etc.
     ///
     /// This function first tries to use [get_app_cache](system::get_app_cache)/{APP} and
-    /// falls back [get_data](App::get_data)/Cache.
-    ///
-    /// # Errors
-    ///
-    /// Returns an [Io](self::Error::Io) if some directory couldn't be created.
-    pub fn get_cache(&self) -> Result<&Path, Error> {
+    /// falls back to [get_data](App::get_data)/Cache.
+    pub fn get_cache(&self) -> Option<AppPath<'_>> {
         self.cache
-            .get_or_try_init(|| {
-                let cache = match system::get_app_cache() {
-                    None => self.get_data()?.join("Cache"),
-                    Some(cache) => cache.join(self.name),
-                };
-                if !cache.is_dir() {
-                    std::fs::create_dir(&cache)?;
-                }
-                Ok(cache)
+            .get_or_try_set(|| {
+                system::get_app_cache()
+                    .map(|v| v.join(self.name))
+                    .or_else(|| self.get_data().map(|v| v.join("Cache")))
+                    .ok_or(())
             })
+            .ok()
             .map(|v| v.as_ref())
+            .map(AppPath::new)
     }
 
     /// Returns the path to this application's public documents.
@@ -137,27 +132,20 @@ impl<'a> App<'a> {
     /// Use this directory to store any content the user should see and alter.
     ///
     /// This function first tries to use [get_app_documents](system::get_app_documents) and
-    /// falls back [get_data](App::get_data)/Documents.
-    ///
-    /// # Errors
-    ///
-    /// Returns an [Io](self::Error::Io) if some directory couldn't be created.
-    pub fn get_documents(&self) -> Result<&Path, Error> {
+    /// falls back to [get_data](App::get_data)/Documents.
+    pub fn get_documents(&self) -> Option<AppPath<'_>> {
         // If this is OK then we must be running from a sandboxed system
         // where the app has it's own public documents folder, otherwise
         // create a "public" Documents directory inside the application's data directory.
         self.docs
-            .get_or_try_init(|| match system::get_app_documents() {
-                Some(docs) => Ok(docs),
-                None => {
-                    let docs = self.get_data()?.join("Documents");
-                    if !docs.is_dir() {
-                        std::fs::create_dir(&docs)?;
-                    }
-                    Ok(docs)
-                }
+            .get_or_try_set(|| {
+                system::get_app_documents()
+                    .or_else(|| self.get_data().map(|v| v.join("Documents")))
+                    .ok_or(())
             })
+            .ok()
             .map(|v| v.as_ref())
+            .map(AppPath::new)
     }
 
     /// Returns the path to this application's logs.
@@ -165,26 +153,20 @@ impl<'a> App<'a> {
     /// Use this directory to store all logs. The user can view and alter this directory.
     ///
     /// This function first tries to use [get_app_logs](system::get_app_logs)/{APP} and
-    /// falls back [get_documents](App::get_documents)/Logs.
-    ///
-    /// # Errors
-    ///
-    /// Returns an [Io](self::Error::Io) if some directory couldn't be created.
-    pub fn get_logs(&self) -> Result<&Path, Error> {
+    /// falls back to [get_documents](App::get_documents)/Logs.
+    pub fn get_logs(&self) -> Option<AppPath<'_>> {
         // Logs should be public and not contain any sensitive information, so store that in
         // the app's public documents.
         self.logs
-            .get_or_try_init(|| {
-                let logs = match system::get_app_logs() {
-                    None => self.get_documents()?.join("Logs"),
-                    Some(logs) => logs.join(self.name),
-                };
-                if !logs.is_dir() {
-                    std::fs::create_dir(&logs)?;
-                }
-                Ok(logs)
+            .get_or_try_set(|| {
+                system::get_app_logs()
+                    .map(|v| v.join(self.name))
+                    .or_else(|| self.get_documents().map(|v| v.join("Logs")))
+                    .ok_or(())
             })
+            .ok()
             .map(|v| v.as_ref())
+            .map(AppPath::new)
     }
 
     /// Returns the path to this application's config.
@@ -193,24 +175,18 @@ impl<'a> App<'a> {
     /// This directory is not intended for direct user access.
     ///
     /// This function first tries to use [get_app_config](system::get_app_config)/{APP} and
-    /// falls back [get_data](App::get_data)/Config.
-    ///
-    /// # Errors
-    ///
-    /// Returns an [Io](self::Error::Io) if some directory couldn't be created.
-    pub fn get_config(&self) -> Result<&Path, Error> {
+    /// falls back to [get_data](App::get_data)/Config.
+    pub fn get_config(&self) -> Option<AppPath<'_>> {
         self.config
-            .get_or_try_init(|| {
-                let config = match system::get_app_config() {
-                    None => self.get_data()?.join("Config"),
-                    Some(config) => config.join(self.name),
-                };
-                if !config.is_dir() {
-                    std::fs::create_dir(&config)?;
-                }
-                Ok(config)
+            .get_or_try_set(|| {
+                system::get_app_config()
+                    .map(|v| v.join(self.name))
+                    .or_else(|| self.get_data().map(|v| v.join("Config")))
+                    .ok_or(())
             })
+            .ok()
             .map(|v| v.as_ref())
+            .map(AppPath::new)
     }
 }
 
@@ -229,6 +205,8 @@ impl<'a> Clone for App<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use crate::dirs::App;
 
     fn assert_sync_send<T: Sync + Send>(x: T) -> T {
@@ -239,5 +217,16 @@ mod tests {
     fn test_sync_send() {
         let obj = App::new("test");
         let _ = assert_sync_send(obj);
+    }
+
+    #[test]
+    fn api_breakage() {
+        let app = App::new("test");
+        let _: Option<PathBuf> = app
+            .get_logs()
+            .map(|v| v.create())
+            .unwrap()
+            .ok()
+            .map(|v| v.into());
     }
 }

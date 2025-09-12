@@ -26,10 +26,11 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use bp3d_os::assets;
+use bp3d_os::fs;
+use bp3d_os::open;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
-use bp3d_os::assets;
-use bp3d_os::open;
 
 fn ensure_yes(str: &str, func: &str) {
     println!("{}", str);
@@ -42,15 +43,50 @@ fn ensure_yes(str: &str, func: &str) {
     }
 }
 
+fn assert_open_no_error_ignore_unsupported(res: open::Result) {
+    if let Err(e) = res {
+        match e {
+            open::Error::Unsupported => (),
+            _ => panic!("unexpected error when calling open: {}", e),
+        }
+    }
+}
+
 fn main() {
     //There is no Assets folder so this should just return None
     assert!(assets::get_app_bundled_asset("file.txt").is_none());
 
     let url = open::Url::try_from("https://rust-lang.org").expect("Failed to parse valid address!");
-    assert!(open::open(url));
-    ensure_yes("Did your browser has opened the rust-lang.org website?", "open::open(Url)");
-    assert!(open::open(Path::new(".")));
-    ensure_yes("Did your file explorer open to the current working directory?", "open::open(Path)");
-    assert!(open::show_in_files([Path::new("/Users/yuri/Projects/tools.os/Cargo.toml"), Path::new("/Users/yuri/Projects/tools.os/Cargo.lock")].into_iter()));
-    ensure_yes("Did your file explorer open to the current working directory selecting both Cargo files?", "open::show_in_files(Path)");
+    assert_open_no_error_ignore_unsupported(open::open(url));
+    ensure_yes(
+        "Did your browser open the rust-lang.org website?",
+        "open::open(Url)",
+    );
+    assert_open_no_error_ignore_unsupported(open::open(Path::new(".")));
+    ensure_yes(
+        "Did your file explorer open to the current working directory?",
+        "open::open(Path)",
+    );
+    assert_open_no_error_ignore_unsupported(open::show_in_files(
+        [Path::new("./Cargo.toml"), Path::new("./Cargo.lock")].into_iter(),
+    ));
+    ensure_yes(
+        "Did your file explorer open to the current working directory selecting both Cargo files?",
+        "open::show_in_files(Path)",
+    );
+    let test_path = Path::new("./Cargo.lock");
+    assert!(!fs::is_hidden(test_path));
+    let test_path = fs::hide(test_path).expect("Failed to hide test file (Cargo.lock)");
+    assert!(fs::is_hidden(&test_path));
+    assert_open_no_error_ignore_unsupported(open::open(test_path.parent().unwrap()));
+    ensure_yes(
+        "Is Cargo.lock now invisible from the file explorer?",
+        "fs::hide",
+    );
+    let test_path = fs::show(test_path).expect("Failed to show test file (Cargo.lock)");
+    assert_open_no_error_ignore_unsupported(open::open(test_path.parent().unwrap()));
+    ensure_yes(
+        "Is Cargo.lock now visible from the file explorer?",
+        "fs::show",
+    );
 }
