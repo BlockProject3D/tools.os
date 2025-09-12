@@ -55,5 +55,5 @@ pub mod module;
 #[cfg(feature = "shell")]
 pub mod shell;
 
-#[cfg(feature = "objc2")]
+#[cfg(all(feature = "objc2", target_vendor = "apple"))]
 mod apple_helpers;
