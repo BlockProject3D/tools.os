@@ -34,7 +34,7 @@ use windows_sys::Win32::System::Console::{
 };
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
     VK_BACK, VK_C, VK_CONTROL, VK_D, VK_DOWN, VK_END, VK_HOME, VK_LEFT, VK_RETURN, VK_RIGHT,
-    VK_TAB, VK_UP, VK_SHIFT
+    VK_SHIFT, VK_TAB, VK_UP,
 };
 
 const BUF_SIZE: usize = 1;
