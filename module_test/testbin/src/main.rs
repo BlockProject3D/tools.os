@@ -41,4 +41,6 @@ fn main() {
     loader.unload("test-mod").unwrap(); // ref-count becomes 1.
     loader.unload("test-mod").unwrap(); //This call should actually unload as ref-count will be back to 0.
     loader.unload("test-mod").unwrap_err();
+    drop(loader);
+    unsafe { ModuleLoader::uninstall() };
 }

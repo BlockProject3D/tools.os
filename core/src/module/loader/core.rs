@@ -29,7 +29,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard, OnceLock};
-use bp3d_debug::debug;
+use bp3d_debug::{debug, error, info};
 use crate::module::error::Error;
 use crate::module::library::{Library, OS_EXT};
 use crate::module::library::types::{OsLibrary, VirtualLibrary};
@@ -37,7 +37,12 @@ use crate::module::loader::Lock;
 use crate::module::loader::util::{load_by_symbol, load_lib, Dependency, DepsMap};
 use crate::module::Module;
 
-static MODULE_LOADER: OnceLock<Mutex<ModuleLoader>> = OnceLock::new();
+struct Data {
+    loader: &'static Mutex<ModuleLoader>,
+    is_root: bool
+}
+
+static MODULE_LOADER: OnceLock<Data> = OnceLock::new();
 
 /// Represents a module loader which can support loading multiple related modules.
 pub struct ModuleLoader {
@@ -54,6 +59,7 @@ impl ModuleLoader {
     /// Create a new instance of a [ModuleLoader] and installs it as this application's
     /// [ModuleLoader].
     pub fn install(builtins: &'static [&'static VirtualLibrary]) {
+        debug!("Installing new ModuleLoader...");
         let mut this = ModuleLoader {
             paths: Default::default(),
             modules: Default::default(),
@@ -65,9 +71,42 @@ impl ModuleLoader {
         };
         this._add_public_dependency(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"), ["*"]);
         this._add_public_dependency("bp3d-debug", "1.0.0", ["*"]);
-        if let Err(_) = MODULE_LOADER.set(Mutex::new(this)) {
+        let data = Data {
+            loader: Box::leak(Box::new(Mutex::new(this))),
+            is_root: true
+        };
+        if let Err(_) = MODULE_LOADER.set(data) {
             panic!("attempt to initialize module loader twice");
         }
+    }
+
+    /// Uninstall the application's [ModuleLoader]. This function will panic if this module did not
+    /// install a [ModuleLoader] but is rather sharing the instance of a different application.
+    ///
+    /// # Safety
+    ///
+    /// Must be called exactly once before returning from main, if not this is UB.
+    pub unsafe fn uninstall() {
+        info!("Uninstalling ModuleLoader...");
+        if !MODULE_LOADER.get().unwrap().is_root {
+            panic!("attempt to uninstall non-root ModuleLoader.")
+        }
+        debug!("Unloading modules...");
+        let mut loader = Self::_lock();
+        let map = loader.module_name_to_id.clone();
+        for (name, _) in map {
+            debug!("Unloading module {}...", name);
+            if let Err(e) = loader._unload(&name) {
+                error!("Failed to unload module {}: {}", name, e);
+            }
+        }
+        drop(loader);
+        debug!("Deleting ModuleLoader...");
+        drop(Box::from_raw(MODULE_LOADER.get().unwrap().loader as *const Mutex<ModuleLoader> as *mut Mutex<ModuleLoader>));
+    }
+
+    pub(crate) fn _instance() -> &'static Mutex<ModuleLoader> {
+        MODULE_LOADER.get().unwrap().loader
     }
 
     /// Installs a default [ModuleLoader] for this application.
@@ -75,11 +114,20 @@ impl ModuleLoader {
         Self::install(&[]);
     }
 
+    /// Install the [ModuleLoader] of this module to an existing instance.
+    pub fn install_from_existing(loader: &'static Mutex<ModuleLoader>) {
+        let res = MODULE_LOADER.set(Data { loader, is_root: false });
+        if res.is_ok() {
+            debug!("Installing ModuleLoader from existing instance...");
+        }
+        assert_eq!(loader as *const Mutex<ModuleLoader>, MODULE_LOADER.get().unwrap().loader as *const Mutex<ModuleLoader>);
+    }
+
     fn _lock<'a>() -> MutexGuard<'a, ModuleLoader> {
         if MODULE_LOADER.get().is_none() {
             Self::install_default();
         }
-        MODULE_LOADER.get().unwrap().lock().unwrap()
+        MODULE_LOADER.get().unwrap().loader.lock().unwrap()
     }
 
     fn _next_module_id(&mut self) -> usize {

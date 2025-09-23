@@ -31,12 +31,14 @@ use std::ffi::{c_char, CStr};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use std::sync::Mutex;
 use bp3d_debug::{debug, info, trace};
 use crate::module::error::{Error, IncompatibleDependency, IncompatibleRustc};
-use crate::module::library::types::OsLibrary;
+use crate::module::library::types::{OsLibrary, Symbol};
 use crate::module::metadata::Value;
 use crate::module::{Module, RUSTC_VERSION};
 use crate::module::library::Library;
+use crate::module::loader::ModuleLoader;
 
 pub struct Dependency {
     pub version: String,
@@ -129,6 +131,8 @@ impl DepsMap {
 }
 
 type DebugInit = extern "Rust" fn(engine: &'static dyn bp3d_debug::engine::Engine);
+
+type ModuleInit = extern "Rust" fn(engine: &'static Mutex<ModuleLoader>);
 
 const MOD_HEADER: &[u8] = b"BP3D_OS_MODULE|";
 
@@ -314,6 +318,9 @@ unsafe fn module_open<L: Library>(name: &str, module: &Module<L>) -> crate::modu
             debug!("Initializing bp3d-debug for module: {}", name);
             debug_init.call(bp3d_debug::engine::get())
         }
+        let init_name = format!("bp3d_os_module_{}_init", name);
+        let sym: Symbol<ModuleInit> = module.lib().load_symbol(init_name)?.ok_or(Error::MissingModuleInitForRust)?;
+        sym.call(ModuleLoader::_instance());
     }
     let main_name = format!("bp3d_os_module_{}_open", name);
     if let Some(main) = module.lib().load_symbol::<extern "C" fn()>(main_name)? {

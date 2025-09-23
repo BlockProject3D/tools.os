@@ -5,4 +5,4 @@ edition = "2024"
 publish = false
 
 [dependencies]
-bp3d-os = { version = "1.0.0-rc.4.2.1", path = "../../core", features = ["module"] }
+bp3d-os = { version = "2.0.0", path = "../../core", features = ["module"] }
