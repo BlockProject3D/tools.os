@@ -35,6 +35,8 @@ use std::fmt::{Debug, Display, Formatter};
 pub struct Module<L> {
     lib: L,
     metadata: Metadata,
+    pub(super) id: usize,
+    pub(super) ref_count: usize
 }
 
 impl<L> Display for Module<L> {
@@ -53,7 +55,7 @@ impl<L: Library> Module<L> {
     ///
     /// returns: Module
     pub fn new(lib: L, metadata: Metadata) -> Self {
-        Module { lib, metadata }
+        Module { lib, metadata, id: 0, ref_count: 1 }
     }
 
     /// Gets a metadata key by its name.

@@ -46,6 +46,8 @@ pub const EXT: &str = "so";
 #[repr(transparent)]
 pub struct Library(*mut c_void);
 
+unsafe impl Send for Library {}
+
 impl Library {
     /// Attempts to open a handle to the current running program.
     pub fn open_self() -> module::Result<Self> {
