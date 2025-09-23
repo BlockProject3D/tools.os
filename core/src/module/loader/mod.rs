@@ -29,8 +29,8 @@
 //! This module contains the implementation of the module loader.
 
 mod core;
-mod util;
 mod interface;
+mod util;
 
 pub use core::ModuleLoader;
 pub use interface::*;

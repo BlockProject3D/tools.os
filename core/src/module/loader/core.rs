@@ -26,20 +26,20 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::module::error::Error;
+use crate::module::library::types::{OsLibrary, VirtualLibrary};
+use crate::module::library::{Library, OS_EXT};
+use crate::module::loader::util::{load_by_symbol, load_lib, Dependency, DepsMap};
+use crate::module::loader::Lock;
+use crate::module::Module;
+use bp3d_debug::{debug, error, info};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard, OnceLock};
-use bp3d_debug::{debug, error, info};
-use crate::module::error::Error;
-use crate::module::library::{Library, OS_EXT};
-use crate::module::library::types::{OsLibrary, VirtualLibrary};
-use crate::module::loader::Lock;
-use crate::module::loader::util::{load_by_symbol, load_lib, Dependency, DepsMap};
-use crate::module::Module;
 
 struct Data {
     loader: &'static Mutex<ModuleLoader>,
-    is_root: bool
+    is_root: bool,
 }
 
 static MODULE_LOADER: OnceLock<Data> = OnceLock::new();
@@ -52,7 +52,7 @@ pub struct ModuleLoader {
     deps: DepsMap,
     builtins: &'static [&'static VirtualLibrary],
     module_name_to_id: HashMap<String, usize>,
-    last_module_id: usize
+    last_module_id: usize,
 }
 
 impl ModuleLoader {
@@ -67,13 +67,13 @@ impl ModuleLoader {
             builtin_modules: Default::default(),
             builtins,
             module_name_to_id: Default::default(),
-            last_module_id: 0
+            last_module_id: 0,
         };
         this._add_public_dependency(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"), ["*"]);
         this._add_public_dependency("bp3d-debug", "1.0.0", ["*"]);
         let data = Data {
             loader: Box::leak(Box::new(Mutex::new(this))),
-            is_root: true
+            is_root: true,
         };
         if let Err(_) = MODULE_LOADER.set(data) {
             panic!("attempt to initialize module loader twice");
@@ -102,7 +102,10 @@ impl ModuleLoader {
         }
         drop(loader);
         debug!("Deleting ModuleLoader...");
-        drop(Box::from_raw(MODULE_LOADER.get().unwrap().loader as *const Mutex<ModuleLoader> as *mut Mutex<ModuleLoader>));
+        drop(Box::from_raw(
+            MODULE_LOADER.get().unwrap().loader as *const Mutex<ModuleLoader>
+                as *mut Mutex<ModuleLoader>,
+        ));
     }
 
     pub(crate) fn _instance() -> &'static Mutex<ModuleLoader> {
@@ -116,11 +119,17 @@ impl ModuleLoader {
 
     /// Install the [ModuleLoader] of this module to an existing instance.
     pub fn install_from_existing(loader: &'static Mutex<ModuleLoader>) {
-        let res = MODULE_LOADER.set(Data { loader, is_root: false });
+        let res = MODULE_LOADER.set(Data {
+            loader,
+            is_root: false,
+        });
         if res.is_ok() {
             debug!("Installing ModuleLoader from existing instance...");
         }
-        assert_eq!(loader as *const Mutex<ModuleLoader>, MODULE_LOADER.get().unwrap().loader as *const Mutex<ModuleLoader>);
+        assert_eq!(
+            loader as *const Mutex<ModuleLoader>,
+            MODULE_LOADER.get().unwrap().loader as *const Mutex<ModuleLoader>
+        );
     }
 
     fn _lock<'a>() -> MutexGuard<'a, ModuleLoader> {
@@ -161,8 +170,8 @@ impl ModuleLoader {
                 Some(v) => {
                     v.ref_count += 1;
                     Ok(*id)
-                },
-                None => Err(Error::NotFound(name))
+                }
+                None => Err(Error::NotFound(name)),
             }
         } else {
             for builtin in self.builtins {
@@ -191,8 +200,8 @@ impl ModuleLoader {
                 Some(v) => {
                     v.ref_count += 1;
                     Ok(*id)
-                },
-                None => Err(Error::NotFound(name))
+                }
+                None => Err(Error::NotFound(name)),
             }
         } else {
             let this = OsLibrary::open_self()?;
@@ -213,8 +222,8 @@ impl ModuleLoader {
                 Some(v) => {
                     v.ref_count += 1;
                     Ok(*id)
-                },
-                None => Err(Error::NotFound(name))
+                }
+                None => Err(Error::NotFound(name)),
             }
         } else {
             let name2 = format!("{}.{}", name, OS_EXT);
@@ -243,7 +252,11 @@ impl ModuleLoader {
     pub(super) fn _unload(&mut self, name: &str) -> crate::module::Result<()> {
         debug!("Closing module: {}", name);
         let name = name.replace("-", "_");
-        let id = self.module_name_to_id.get(&name).map(|v| *v).ok_or_else(|| Error::NotFound(name.clone()))?;
+        let id = self
+            .module_name_to_id
+            .get(&name)
+            .map(|v| *v)
+            .ok_or_else(|| Error::NotFound(name.clone()))?;
         if self.modules.contains_key(&id) {
             let module = self.modules.get_mut(&id).unwrap();
             module.ref_count -= 1;
@@ -251,19 +264,26 @@ impl ModuleLoader {
                 self.module_name_to_id.remove(&name);
                 let module = unsafe { self.modules.remove(&id).unwrap_unchecked() };
                 let main_name = format!("bp3d_os_module_{}_close", &name);
-                if let Some(main) = unsafe { module.lib().load_symbol::<extern "C" fn()>(main_name)? } {
+                if let Some(main) =
+                    unsafe { module.lib().load_symbol::<extern "C" fn()>(main_name)? }
+                {
                     main.call();
                 }
                 drop(module);
             }
         } else {
-            let module = self.builtin_modules.get_mut(&id).ok_or_else(|| Error::NotFound(name.clone()))?;
+            let module = self
+                .builtin_modules
+                .get_mut(&id)
+                .ok_or_else(|| Error::NotFound(name.clone()))?;
             module.ref_count -= 1;
             if module.ref_count == 0 {
                 self.module_name_to_id.remove(&name);
                 let module = unsafe { self.builtin_modules.remove(&id).unwrap_unchecked() };
                 let main_name = format!("bp3d_os_module_{}_close", &name);
-                if let Some(main) = unsafe { module.lib().load_symbol::<extern "C" fn()>(main_name)? } {
+                if let Some(main) =
+                    unsafe { module.lib().load_symbol::<extern "C" fn()>(main_name)? }
+                {
                     main.call();
                 }
                 drop(module);
@@ -311,7 +331,7 @@ impl ModuleLoader {
     /// operate the [ModuleLoader].
     pub fn lock<'a>() -> Lock<'a> {
         Lock {
-            lock: Self::_lock()
+            lock: Self::_lock(),
         }
     }
 }
