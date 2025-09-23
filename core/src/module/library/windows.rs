@@ -42,6 +42,8 @@ pub const EXT: &str = "dll";
 #[derive(Debug)]
 pub struct Library(HMODULE);
 
+unsafe impl Send for Library {}
+
 impl Library {
     /// Attempts to open a handle to the current running program.
     pub fn open_self() -> module::Result<Self> {
