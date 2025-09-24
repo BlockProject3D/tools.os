@@ -28,7 +28,7 @@
 
 use bp3d_os::module::loader::ModuleLoader;
 
-fn main() {
+fn run_module_test() {
     ModuleLoader::install_default();
     let mut loader = ModuleLoader::lock();
     loader.add_search_path("./target/debug/");
@@ -42,5 +42,10 @@ fn main() {
     loader.unload("test-mod").unwrap(); //This call should actually unload as ref-count will be back to 0.
     loader.unload("test-mod").unwrap_err();
     drop(loader);
-    unsafe { ModuleLoader::uninstall() };
+    ModuleLoader::uninstall();
+}
+
+fn main() {
+    run_module_test();
+    run_module_test();
 }

@@ -34,6 +34,7 @@ use std::ffi::{c_void, CString};
 use std::fmt::Debug;
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
+use bp3d_debug::debug;
 
 #[cfg(target_vendor = "apple")]
 pub const EXT: &str = "dylib";
@@ -97,6 +98,7 @@ impl super::Library for Library {
 
 impl Drop for Library {
     fn drop(&mut self) {
+        debug!("dlclose");
         unsafe { dlclose(self.0) };
     }
 }

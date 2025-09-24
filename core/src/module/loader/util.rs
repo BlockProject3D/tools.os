@@ -134,6 +134,8 @@ type DebugInit = extern "Rust" fn(engine: &'static dyn bp3d_debug::engine::Engin
 
 type ModuleInit = extern "Rust" fn(engine: &'static Mutex<ModuleLoader>);
 
+type ModuleUninit = extern "Rust" fn();
+
 const MOD_HEADER: &[u8] = b"BP3D_OS_MODULE|";
 
 fn parse_metadata(bytes: &[u8]) -> crate::module::Result<crate::module::metadata::Metadata> {
@@ -307,7 +309,7 @@ pub unsafe fn load_lib(deps3: &mut DepsMap, name: &str, path: &Path) -> crate::m
 unsafe fn module_open<L: Library>(name: &str, module: &Module<L>) -> crate::module::Result<()> {
     let name = module.get_metadata_key("NAME").unwrap_or(name);
     let version = module.get_metadata_key("VERSION").unwrap_or("UNKNOWN");
-    info!("Opening module {}-{}", name, version);
+    info!("Opening module {}-{}...", name, version);
     if module
         .get_metadata_key("TYPE")
         .ok_or(Error::InvalidMetadata)?
@@ -325,6 +327,28 @@ unsafe fn module_open<L: Library>(name: &str, module: &Module<L>) -> crate::modu
     let main_name = format!("bp3d_os_module_{}_open", name);
     if let Some(main) = module.lib().load_symbol::<extern "C" fn()>(main_name)? {
         debug!("Running module_open for module: {}", name);
+        main.call();
+    }
+    Ok(())
+}
+
+pub unsafe fn module_close<L: Library>(name: &str, builtin: bool, module: &Module<L>) -> crate::module::Result<()> {
+    let name = module.get_metadata_key("NAME").unwrap_or(name);
+    let version = module.get_metadata_key("VERSION").unwrap_or("UNKNOWN");
+    info!("Closing module {}-{}...", name, version);
+    if !builtin && module
+        .get_metadata_key("TYPE")
+        .ok_or(Error::InvalidMetadata)?
+        == "RUST"
+    {
+        let init_name = format!("bp3d_os_module_{}_uninit", name);
+        let sym: Symbol<ModuleUninit> = module.lib().load_symbol(init_name)?.ok_or(Error::MissingModuleInitForRust)?;
+        debug!("module_uninit");
+        sym.call();
+    }
+    let main_name = format!("bp3d_os_module_{}_close", &name);
+    if let Some(main) = unsafe { module.lib().load_symbol::<extern "C" fn()>(main_name)? } {
+        debug!("module_close");
         main.call();
     }
     Ok(())

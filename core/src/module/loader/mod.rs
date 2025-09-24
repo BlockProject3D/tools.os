@@ -34,14 +34,3 @@ mod interface;
 
 pub use core::ModuleLoader;
 pub use interface::*;
-
-//FIXME: Module Manager system
-//  - When a module is loaded, the ModuleLoader static in the new module is set to this instance.
-//          => Warning: this may need tweaking to ensure the ModuleLoader cannot be unloaded by a
-//             module but only by the main application.
-//          => ModuleLoader may need to be allocated on the heap and leaked.
-//  - ModuleLoader must be thread safe and app global.
-//  - ModuleManager in Lua VM must then be a wrapper to this singleton by storing a list of all
-//    modules retained by the current VM and call unload to release all modules once the VM has finished.
-//    Thanks to the ref counter the module will unload only when all references have been released.
-//  - Allow listing all loaded modules.

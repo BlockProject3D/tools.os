@@ -106,7 +106,7 @@ impl ModuleMain {
             crate_name,
             virtual_lib,
         };
-        this.add_init()
+        this.add_init().add_uninit()
     }
 
     pub fn add_export(mut self, func_name: impl AsRef<str>) -> Self {
@@ -129,6 +129,23 @@ impl ModuleMain {
         );
         self.rust_code += &rust_code;
         let motherfuckingrust = format!("bp3d_os_module_{crate_name}_init");
+        self.add_export(motherfuckingrust)
+    }
+
+    fn add_uninit(mut self) -> Self {
+        let motherfuckingrust = "extern \"C\"";
+        let crate_name = &self.crate_name;
+        let rust_code = format!(
+            r"
+    #[unsafe(no_mangle)]
+    #[inline(never)]
+    pub {motherfuckingrust} fn bp3d_os_module_{crate_name}_uninit() {{
+        bp3d_os::module::loader::ModuleLoader::uninstall();
+    }}
+"
+        );
+        self.rust_code += &rust_code;
+        let motherfuckingrust = format!("bp3d_os_module_{crate_name}_uninit");
         self.add_export(motherfuckingrust)
     }
 

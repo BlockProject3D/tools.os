@@ -28,21 +28,69 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard, OnceLock};
-use bp3d_debug::{debug, error, info};
+use std::sync::{Mutex, MutexGuard};
+use std::sync::atomic::{AtomicBool, AtomicPtr};
+use std::sync::atomic::Ordering::SeqCst;
+use bp3d_debug::{debug, error};
 use crate::module::error::Error;
-use crate::module::library::{Library, OS_EXT};
+use crate::module::library::OS_EXT;
 use crate::module::library::types::{OsLibrary, VirtualLibrary};
 use crate::module::loader::Lock;
-use crate::module::loader::util::{load_by_symbol, load_lib, Dependency, DepsMap};
+use crate::module::loader::util::{load_by_symbol, load_lib, module_close, Dependency, DepsMap};
 use crate::module::Module;
 
 struct Data {
-    loader: &'static Mutex<ModuleLoader>,
-    is_root: bool
+    loader: AtomicPtr<Mutex<ModuleLoader>>,
+    is_root: AtomicBool,
 }
 
-static MODULE_LOADER: OnceLock<Data> = OnceLock::new();
+impl Data {
+    fn install(&self, loader: ModuleLoader) -> bool {
+        let ptr = self.loader.load(SeqCst);
+        if ptr.is_null() {
+            self.loader.store(Box::leak(Box::new(Mutex::new(loader))), SeqCst);
+            self.is_root.store(true, SeqCst);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn install_existing(&self, loader: &'static Mutex<ModuleLoader>) -> bool {
+        let ptr = self.loader.load(SeqCst);
+        if ptr.is_null() {
+            self.is_root.store(false, SeqCst);
+            self.loader.store(loader as *const Mutex<ModuleLoader> as *mut _, SeqCst);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn is_root(&self) -> bool {
+        self.is_root.load(SeqCst)
+    }
+
+    fn reset(&self) {
+        self.loader.store(std::ptr::null_mut(), SeqCst);
+        self.is_root.store(false, SeqCst);
+    }
+
+    fn is_set(&self) -> bool {
+        !self.loader.load(SeqCst).is_null()
+    }
+
+    // This is only safe if this is set.
+    unsafe fn get(&self) -> &'static Mutex<ModuleLoader> {
+        let ptr = self.loader.load(SeqCst);
+        unsafe { &*ptr }
+    }
+}
+
+static MODULE_LOADER: Data = Data {
+    loader: AtomicPtr::new(std::ptr::null_mut()),
+    is_root: AtomicBool::new(false),
+};
 
 /// Represents a module loader which can support loading multiple related modules.
 pub struct ModuleLoader {
@@ -71,42 +119,41 @@ impl ModuleLoader {
         };
         this._add_public_dependency(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"), ["*"]);
         this._add_public_dependency("bp3d-debug", "1.0.0", ["*"]);
-        let data = Data {
-            loader: Box::leak(Box::new(Mutex::new(this))),
-            is_root: true
-        };
-        if let Err(_) = MODULE_LOADER.set(data) {
+        if !MODULE_LOADER.install(this) {
             panic!("attempt to initialize module loader twice");
         }
     }
 
     /// Uninstall the application's [ModuleLoader]. This function will panic if this module did not
     /// install a [ModuleLoader] but is rather sharing the instance of a different application.
-    ///
-    /// # Safety
-    ///
-    /// Must be called exactly once before returning from main, if not this is UB.
-    pub unsafe fn uninstall() {
-        info!("Uninstalling ModuleLoader...");
-        if !MODULE_LOADER.get().unwrap().is_root {
-            panic!("attempt to uninstall non-root ModuleLoader.")
+    pub fn uninstall() {
+        debug!("Uninstalling ModuleLoader...");
+        if !MODULE_LOADER.is_set() {
+            panic!("attempt to uninstall a non-existent ModuleLoader");
         }
-        debug!("Unloading modules...");
-        let mut loader = Self::_lock();
-        let map = loader.module_name_to_id.clone();
-        for (name, _) in map {
-            debug!("Unloading module {}...", name);
-            if let Err(e) = loader._unload(&name) {
-                error!("Failed to unload module {}: {}", name, e);
+        if !MODULE_LOADER.is_root() {
+            MODULE_LOADER.reset()
+        } else {
+            debug!("Unloading modules...");
+            let mut loader = Self::_lock();
+            let map = loader.module_name_to_id.clone();
+            for (name, _) in map {
+                debug!("Unloading module {}...", name);
+                if let Err(e) = loader._unload(&name) {
+                    error!("Failed to unload module {}: {}", name, e);
+                }
             }
+            drop(loader);
+            debug!("Deleting ModuleLoader...");
+            unsafe {
+                drop(Box::from_raw(MODULE_LOADER.get() as *const Mutex<ModuleLoader> as *mut Mutex<ModuleLoader>));
+            }
+            MODULE_LOADER.reset();
         }
-        drop(loader);
-        debug!("Deleting ModuleLoader...");
-        drop(Box::from_raw(MODULE_LOADER.get().unwrap().loader as *const Mutex<ModuleLoader> as *mut Mutex<ModuleLoader>));
     }
 
     pub(crate) fn _instance() -> &'static Mutex<ModuleLoader> {
-        MODULE_LOADER.get().unwrap().loader
+        unsafe { MODULE_LOADER.get() }
     }
 
     /// Installs a default [ModuleLoader] for this application.
@@ -116,18 +163,17 @@ impl ModuleLoader {
 
     /// Install the [ModuleLoader] of this module to an existing instance.
     pub fn install_from_existing(loader: &'static Mutex<ModuleLoader>) {
-        let res = MODULE_LOADER.set(Data { loader, is_root: false });
-        if res.is_ok() {
-            debug!("Installing ModuleLoader from existing instance...");
+        if MODULE_LOADER.install_existing(loader) {
+            debug!("Installed ModuleLoader from existing instance");
         }
-        assert_eq!(loader as *const Mutex<ModuleLoader>, MODULE_LOADER.get().unwrap().loader as *const Mutex<ModuleLoader>);
+        assert_eq!(loader as *const Mutex<ModuleLoader>, unsafe { MODULE_LOADER.get() as *const Mutex<ModuleLoader> });
     }
 
     fn _lock<'a>() -> MutexGuard<'a, ModuleLoader> {
-        if MODULE_LOADER.get().is_none() {
+        if !MODULE_LOADER.is_set() {
             Self::install_default();
         }
-        MODULE_LOADER.get().unwrap().loader.lock().unwrap()
+        unsafe { MODULE_LOADER.get().lock().unwrap() }
     }
 
     fn _next_module_id(&mut self) -> usize {
@@ -241,19 +287,16 @@ impl ModuleLoader {
     }
 
     pub(super) fn _unload(&mut self, name: &str) -> crate::module::Result<()> {
-        debug!("Closing module: {}", name);
+        debug!("Unloading module: {}", name);
         let name = name.replace("-", "_");
-        let id = self.module_name_to_id.get(&name).map(|v| *v).ok_or_else(|| Error::NotFound(name.clone()))?;
+        let id = self.module_name_to_id.get(&name).copied().ok_or_else(|| Error::NotFound(name.clone()))?;
         if self.modules.contains_key(&id) {
             let module = self.modules.get_mut(&id).unwrap();
             module.ref_count -= 1;
             if module.ref_count == 0 {
                 self.module_name_to_id.remove(&name);
                 let module = unsafe { self.modules.remove(&id).unwrap_unchecked() };
-                let main_name = format!("bp3d_os_module_{}_close", &name);
-                if let Some(main) = unsafe { module.lib().load_symbol::<extern "C" fn()>(main_name)? } {
-                    main.call();
-                }
+                unsafe { module_close(&name, false, &module) }?;
                 drop(module);
             }
         } else {
@@ -262,10 +305,7 @@ impl ModuleLoader {
             if module.ref_count == 0 {
                 self.module_name_to_id.remove(&name);
                 let module = unsafe { self.builtin_modules.remove(&id).unwrap_unchecked() };
-                let main_name = format!("bp3d_os_module_{}_close", &name);
-                if let Some(main) = unsafe { module.lib().load_symbol::<extern "C" fn()>(main_name)? } {
-                    main.call();
-                }
+                unsafe { module_close(&name, true, &module) }?;
                 drop(module);
             }
         }
