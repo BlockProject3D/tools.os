@@ -26,16 +26,26 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use bp3d_os::module::ModuleLoader;
+use bp3d_os::module::loader::ModuleLoader;
 
-fn main() {
-    let mut loader = ModuleLoader::default();
+fn run_module_test() {
+    ModuleLoader::install_default();
+    let mut loader = ModuleLoader::lock();
     loader.add_search_path("./target/debug/");
     println!("Running simple module load/unload test");
     unsafe { loader.load("test-mod").unwrap() };
     loader.unload("test-mod").unwrap();
     println!("Running module load twice test followed by unload");
     unsafe { loader.load("test-mod").unwrap() };
-    unsafe { loader.load("test-mod").unwrap() };
-    loader.unload("test-mod").unwrap();
+    unsafe { loader.load("test-mod").unwrap() }; // ref-count becomes 2.
+    loader.unload("test-mod").unwrap(); // ref-count becomes 1.
+    loader.unload("test-mod").unwrap(); //This call should actually unload as ref-count will be back to 0.
+    loader.unload("test-mod").unwrap_err();
+    drop(loader);
+    ModuleLoader::uninstall();
+}
+
+fn main() {
+    run_module_test();
+    run_module_test();
 }

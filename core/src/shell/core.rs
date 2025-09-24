@@ -32,6 +32,8 @@ use crate::shell_println;
 use std::sync::mpsc;
 use std::thread::JoinHandle;
 
+//FIXME: The shift key is broken under windows.
+
 /// Represents an event emitted from the input abstraction.
 pub enum Event {
     /// A command string was submitted to the application.

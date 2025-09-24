@@ -100,18 +100,53 @@ impl ModuleMain {
         (\"{mod_const_name}\", unsafe {{ &{mod_const_name} as *const *const i8 as *const std::ffi::c_void }})");
         let out_path =
             PathBuf::from(std::env::var_os("OUT_DIR").unwrap()).join("bp3d_os_module.rs");
-        Self {
+        let this = Self {
             rust_code,
             out_path,
             crate_name,
             virtual_lib,
-        }
+        };
+        this.add_init().add_uninit()
     }
 
     pub fn add_export(mut self, func_name: impl AsRef<str>) -> Self {
         let func_name = func_name.as_ref();
         self.virtual_lib += &format!(",\n        (\"{func_name}\", {func_name} as _)");
         self
+    }
+
+    fn add_init(mut self) -> Self {
+        let motherfuckingrust = "extern \"C\"";
+        let crate_name = &self.crate_name;
+        let rust_code = format!(
+            r"
+    #[unsafe(no_mangle)]
+    #[inline(never)]
+    pub {motherfuckingrust} fn bp3d_os_module_{crate_name}_init(loader: &'static std::sync::Mutex<bp3d_os::module::loader::ModuleLoader>) {{
+        bp3d_os::module::loader::ModuleLoader::install_from_existing(loader);
+    }}
+"
+        );
+        self.rust_code += &rust_code;
+        let motherfuckingrust = format!("bp3d_os_module_{crate_name}_init");
+        self.add_export(motherfuckingrust)
+    }
+
+    fn add_uninit(mut self) -> Self {
+        let motherfuckingrust = "extern \"C\"";
+        let crate_name = &self.crate_name;
+        let rust_code = format!(
+            r"
+    #[unsafe(no_mangle)]
+    #[inline(never)]
+    pub {motherfuckingrust} fn bp3d_os_module_{crate_name}_uninit() {{
+        bp3d_os::module::loader::ModuleLoader::uninstall();
+    }}
+"
+        );
+        self.rust_code += &rust_code;
+        let motherfuckingrust = format!("bp3d_os_module_{crate_name}_uninit");
+        self.add_export(motherfuckingrust)
     }
 
     pub fn add_open(mut self) -> Self {
