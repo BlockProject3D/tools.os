@@ -26,18 +26,18 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::module::error::Error;
+use crate::module::library::types::{OsLibrary, VirtualLibrary};
+use crate::module::library::OS_EXT;
+use crate::module::loader::util::{load_by_symbol, load_lib, module_close, Dependency, DepsMap};
+use crate::module::loader::Lock;
+use crate::module::Module;
+use bp3d_debug::{debug, error};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard};
-use std::sync::atomic::{AtomicBool, AtomicPtr};
 use std::sync::atomic::Ordering::SeqCst;
-use bp3d_debug::{debug, error};
-use crate::module::error::Error;
-use crate::module::library::OS_EXT;
-use crate::module::library::types::{OsLibrary, VirtualLibrary};
-use crate::module::loader::Lock;
-use crate::module::loader::util::{load_by_symbol, load_lib, module_close, Dependency, DepsMap};
-use crate::module::Module;
+use std::sync::atomic::{AtomicBool, AtomicPtr};
+use std::sync::{Mutex, MutexGuard};
 
 struct Data {
     loader: AtomicPtr<Mutex<ModuleLoader>>,
@@ -48,7 +48,8 @@ impl Data {
     fn install(&self, loader: ModuleLoader) -> bool {
         let ptr = self.loader.load(SeqCst);
         if ptr.is_null() {
-            self.loader.store(Box::leak(Box::new(Mutex::new(loader))), SeqCst);
+            self.loader
+                .store(Box::leak(Box::new(Mutex::new(loader))), SeqCst);
             self.is_root.store(true, SeqCst);
             true
         } else {
@@ -60,7 +61,8 @@ impl Data {
         let ptr = self.loader.load(SeqCst);
         if ptr.is_null() {
             self.is_root.store(false, SeqCst);
-            self.loader.store(loader as *const Mutex<ModuleLoader> as *mut _, SeqCst);
+            self.loader
+                .store(loader as *const Mutex<ModuleLoader> as *mut _, SeqCst);
             true
         } else {
             false
@@ -100,7 +102,7 @@ pub struct ModuleLoader {
     deps: DepsMap,
     builtins: &'static [&'static VirtualLibrary],
     module_name_to_id: HashMap<String, usize>,
-    last_module_id: usize
+    last_module_id: usize,
 }
 
 impl ModuleLoader {
@@ -115,7 +117,7 @@ impl ModuleLoader {
             builtin_modules: Default::default(),
             builtins,
             module_name_to_id: Default::default(),
-            last_module_id: 0
+            last_module_id: 0,
         };
         this._add_public_dependency(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"), ["*"]);
         this._add_public_dependency("bp3d-debug", "1.0.0", ["*"]);
@@ -146,7 +148,9 @@ impl ModuleLoader {
             drop(loader);
             debug!("Deleting ModuleLoader...");
             unsafe {
-                drop(Box::from_raw(MODULE_LOADER.get() as *const Mutex<ModuleLoader> as *mut Mutex<ModuleLoader>));
+                drop(Box::from_raw(
+                    MODULE_LOADER.get() as *const Mutex<ModuleLoader> as *mut Mutex<ModuleLoader>,
+                ));
             }
             MODULE_LOADER.reset();
         }
@@ -166,7 +170,9 @@ impl ModuleLoader {
         if MODULE_LOADER.install_existing(loader) {
             debug!("Installed ModuleLoader from existing instance");
         }
-        assert_eq!(loader as *const Mutex<ModuleLoader>, unsafe { MODULE_LOADER.get() as *const Mutex<ModuleLoader> });
+        assert_eq!(loader as *const Mutex<ModuleLoader>, unsafe {
+            MODULE_LOADER.get() as *const Mutex<ModuleLoader>
+        });
     }
 
     fn _lock<'a>() -> MutexGuard<'a, ModuleLoader> {
@@ -207,8 +213,8 @@ impl ModuleLoader {
                 Some(v) => {
                     v.ref_count += 1;
                     Ok(*id)
-                },
-                None => Err(Error::NotFound(name))
+                }
+                None => Err(Error::NotFound(name)),
             }
         } else {
             for builtin in self.builtins {
@@ -237,8 +243,8 @@ impl ModuleLoader {
                 Some(v) => {
                     v.ref_count += 1;
                     Ok(*id)
-                },
-                None => Err(Error::NotFound(name))
+                }
+                None => Err(Error::NotFound(name)),
             }
         } else {
             let this = OsLibrary::open_self()?;
@@ -259,8 +265,8 @@ impl ModuleLoader {
                 Some(v) => {
                     v.ref_count += 1;
                     Ok(*id)
-                },
-                None => Err(Error::NotFound(name))
+                }
+                None => Err(Error::NotFound(name)),
             }
         } else {
             let name2 = format!("{}.{}", name, OS_EXT);
@@ -289,7 +295,11 @@ impl ModuleLoader {
     pub(super) fn _unload(&mut self, name: &str) -> crate::module::Result<()> {
         debug!("Unloading module: {}", name);
         let name = name.replace("-", "_");
-        let id = self.module_name_to_id.get(&name).copied().ok_or_else(|| Error::NotFound(name.clone()))?;
+        let id = self
+            .module_name_to_id
+            .get(&name)
+            .copied()
+            .ok_or_else(|| Error::NotFound(name.clone()))?;
         if self.modules.contains_key(&id) {
             let module = self.modules.get_mut(&id).unwrap();
             module.ref_count -= 1;
@@ -300,7 +310,10 @@ impl ModuleLoader {
                 drop(module);
             }
         } else {
-            let module = self.builtin_modules.get_mut(&id).ok_or_else(|| Error::NotFound(name.clone()))?;
+            let module = self
+                .builtin_modules
+                .get_mut(&id)
+                .ok_or_else(|| Error::NotFound(name.clone()))?;
             module.ref_count -= 1;
             if module.ref_count == 0 {
                 self.module_name_to_id.remove(&name);
@@ -351,7 +364,7 @@ impl ModuleLoader {
     /// operate the [ModuleLoader].
     pub fn lock<'a>() -> Lock<'a> {
         Lock {
-            lock: Self::_lock()
+            lock: Self::_lock(),
         }
     }
 }

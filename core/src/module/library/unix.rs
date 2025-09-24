@@ -29,12 +29,12 @@
 use crate::module;
 use crate::module::error::Error;
 use crate::module::library::symbol::Symbol;
+use bp3d_debug::debug;
 use libc::{dlclose, dlopen, dlsym, RTLD_LAZY};
 use std::ffi::{c_void, CString};
 use std::fmt::Debug;
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
-use bp3d_debug::debug;
 
 #[cfg(target_vendor = "apple")]
 pub const EXT: &str = "dylib";

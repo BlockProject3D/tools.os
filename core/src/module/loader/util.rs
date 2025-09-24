@@ -26,19 +26,19 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::module::error::{Error, IncompatibleDependency, IncompatibleRustc};
+use crate::module::library::types::{OsLibrary, Symbol};
+use crate::module::library::Library;
+use crate::module::loader::ModuleLoader;
+use crate::module::metadata::Value;
+use crate::module::{Module, RUSTC_VERSION};
+use bp3d_debug::{debug, info, trace};
 use std::collections::{HashMap, HashSet};
 use std::ffi::{c_char, CStr};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::sync::Mutex;
-use bp3d_debug::{debug, info, trace};
-use crate::module::error::{Error, IncompatibleDependency, IncompatibleRustc};
-use crate::module::library::types::{OsLibrary, Symbol};
-use crate::module::metadata::Value;
-use crate::module::{Module, RUSTC_VERSION};
-use crate::module::library::Library;
-use crate::module::loader::ModuleLoader;
 
 pub struct Dependency {
     pub version: String,
@@ -230,7 +230,10 @@ fn check_deps(
     Ok(())
 }
 
-fn check_metadata(metadata: &crate::module::metadata::Metadata, deps3: &mut DepsMap) -> crate::module::Result<()> {
+fn check_metadata(
+    metadata: &crate::module::metadata::Metadata,
+    deps3: &mut DepsMap,
+) -> crate::module::Result<()> {
     if metadata.get("TYPE").ok_or(Error::InvalidMetadata)?.as_str() == "RUST" {
         // This symbol is optional and will not exist on C/C++ modules, only on Rust based modules.
         // The main reason the rustc version is checked on Rust modules is for interop with user
@@ -298,7 +301,11 @@ fn check_metadata(metadata: &crate::module::metadata::Metadata, deps3: &mut Deps
     Ok(())
 }
 
-pub unsafe fn load_lib(deps3: &mut DepsMap, name: &str, path: &Path) -> crate::module::Result<Module<OsLibrary>> {
+pub unsafe fn load_lib(
+    deps3: &mut DepsMap,
+    name: &str,
+    path: &Path,
+) -> crate::module::Result<Module<OsLibrary>> {
     let metadata = load_metadata(path)?;
     check_metadata(&metadata, deps3)?;
     let module = Module::new(OsLibrary::load(path)?, metadata);
@@ -321,7 +328,10 @@ unsafe fn module_open<L: Library>(name: &str, module: &Module<L>) -> crate::modu
             debug_init.call(bp3d_debug::engine::get())
         }
         let init_name = format!("bp3d_os_module_{}_init", name);
-        let sym: Symbol<ModuleInit> = module.lib().load_symbol(init_name)?.ok_or(Error::MissingModuleInitForRust)?;
+        let sym: Symbol<ModuleInit> = module
+            .lib()
+            .load_symbol(init_name)?
+            .ok_or(Error::MissingModuleInitForRust)?;
         sym.call(ModuleLoader::_instance());
     }
     let main_name = format!("bp3d_os_module_{}_open", name);
@@ -332,17 +342,25 @@ unsafe fn module_open<L: Library>(name: &str, module: &Module<L>) -> crate::modu
     Ok(())
 }
 
-pub unsafe fn module_close<L: Library>(name: &str, builtin: bool, module: &Module<L>) -> crate::module::Result<()> {
+pub unsafe fn module_close<L: Library>(
+    name: &str,
+    builtin: bool,
+    module: &Module<L>,
+) -> crate::module::Result<()> {
     let name = module.get_metadata_key("NAME").unwrap_or(name);
     let version = module.get_metadata_key("VERSION").unwrap_or("UNKNOWN");
     info!("Closing module {}-{}...", name, version);
-    if !builtin && module
-        .get_metadata_key("TYPE")
-        .ok_or(Error::InvalidMetadata)?
-        == "RUST"
+    if !builtin
+        && module
+            .get_metadata_key("TYPE")
+            .ok_or(Error::InvalidMetadata)?
+            == "RUST"
     {
         let init_name = format!("bp3d_os_module_{}_uninit", name);
-        let sym: Symbol<ModuleUninit> = module.lib().load_symbol(init_name)?.ok_or(Error::MissingModuleInitForRust)?;
+        let sym: Symbol<ModuleUninit> = module
+            .lib()
+            .load_symbol(init_name)?
+            .ok_or(Error::MissingModuleInitForRust)?;
         debug!("module_uninit");
         sym.call();
     }
@@ -354,7 +372,11 @@ pub unsafe fn module_close<L: Library>(name: &str, builtin: bool, module: &Modul
     Ok(())
 }
 
-pub unsafe fn load_by_symbol<L: Library>(lib: L, name: &str, deps: &mut DepsMap) -> crate::module::Result<Module<L>> {
+pub unsafe fn load_by_symbol<L: Library>(
+    lib: L,
+    name: &str,
+    deps: &mut DepsMap,
+) -> crate::module::Result<Module<L>> {
     let mod_const_name = format!("BP3D_OS_MODULE_{}", name.to_uppercase());
     if let Some(sym) = lib.load_symbol::<*const c_char>(mod_const_name)? {
         let bytes = CStr::from_ptr((*sym.as_ptr()).offset(1)).to_bytes_with_nul();
