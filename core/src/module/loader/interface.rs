@@ -27,12 +27,12 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::module::library::types::{OsLibrary, VirtualLibrary};
+use crate::module::library::Library;
 use crate::module::loader::ModuleLoader;
 use crate::module::Module;
+use crate::module::Result;
 use std::path::Path;
 use std::sync::MutexGuard;
-use crate::module::library::Library;
-use crate::module::Result;
 
 /// Represents a handle to a [Module] stored in the application's [ModuleLoader].
 pub trait ModuleHandle {
@@ -45,15 +45,12 @@ pub trait ModuleHandle {
 
 struct VirtualLibraryHandle<'a> {
     loader: &'a ModuleLoader,
-    id: usize
+    id: usize,
 }
 
 impl<'a> VirtualLibraryHandle<'a> {
     fn new(loader: &'a ModuleLoader, id: usize) -> VirtualLibraryHandle<'a> {
-        VirtualLibraryHandle {
-            loader,
-            id
-        }
+        VirtualLibraryHandle { loader, id }
     }
 }
 
@@ -67,15 +64,12 @@ impl<'a> ModuleHandle for VirtualLibraryHandle<'a> {
 
 struct OsLibraryHandle<'a> {
     loader: &'a ModuleLoader,
-    id: usize
+    id: usize,
 }
 
 impl<'a> OsLibraryHandle<'a> {
     fn new(loader: &'a ModuleLoader, id: usize) -> OsLibraryHandle<'a> {
-        OsLibraryHandle {
-            loader,
-            id
-        }
+        OsLibraryHandle { loader, id }
     }
 }
 
@@ -106,7 +100,9 @@ impl<'a> Lock<'a> {
     /// This function assumes the module to be loaded, if it exists has the correct format otherwise
     /// this function is UB.
     pub unsafe fn load_builtin(&mut self, name: &str) -> Result<impl ModuleHandle + '_> {
-        self.lock._load_builtin(name).map(|id| VirtualLibraryHandle::new(&self.lock, id))
+        self.lock
+            ._load_builtin(name)
+            .map(|id| VirtualLibraryHandle::new(&self.lock, id))
     }
 
     /// Attempts to load a module from the specified name which is dynamically linked in the current
@@ -123,7 +119,9 @@ impl<'a> Lock<'a> {
     /// This function assumes the module to be loaded, if it exists has the correct format otherwise
     /// this function is UB.
     pub unsafe fn load_self(&mut self, name: &str) -> Result<impl ModuleHandle + '_> {
-        self.lock._load_self(name).map(|id| OsLibraryHandle::new(&self.lock, id))
+        self.lock
+            ._load_self(name)
+            .map(|id| OsLibraryHandle::new(&self.lock, id))
     }
 
     /// Attempts to load a module from the specified name.
@@ -147,7 +145,9 @@ impl<'a> Lock<'a> {
     /// for the module are not added with [add_public_dependency](Self::add_public_dependency),
     /// this is also UB.
     pub unsafe fn load(&mut self, name: &str) -> Result<impl ModuleHandle + '_> {
-        self.lock._load(name).map(|id| OsLibraryHandle::new(&self.lock, id))
+        self.lock
+            ._load(name)
+            .map(|id| OsLibraryHandle::new(&self.lock, id))
     }
 
     /// Attempts to unload the given module.
@@ -183,19 +183,28 @@ impl<'a> Lock<'a> {
     /// * `version`: the version of the dependency.
     ///
     /// returns: ()
-    pub fn add_public_dependency<'b>(&mut self, name: &str, version: &str, features: impl IntoIterator<Item = &'b str>) {
+    pub fn add_public_dependency<'b>(
+        &mut self,
+        name: &str,
+        version: &str,
+        features: impl IntoIterator<Item = &'b str>,
+    ) {
         self.lock._add_public_dependency(name, version, features);
     }
 
     /// Returns the builtin module identified by the name `name`, returns [None] if the module is
     /// not loaded.
     pub fn get_builtin(&self, name: &str) -> Option<impl ModuleHandle + '_> {
-        self.lock._get_builtin(name).map(|id| VirtualLibraryHandle::new(&self.lock, id))
+        self.lock
+            ._get_builtin(name)
+            .map(|id| VirtualLibraryHandle::new(&self.lock, id))
     }
 
     /// Returns the module identified by the name `name`, returns [None] if the module is
     /// not loaded.
     pub fn get_module(&self, name: &str) -> Option<impl ModuleHandle + '_> {
-        self.lock._get_module(name).map(|id| OsLibraryHandle::new(&self.lock, id))
+        self.lock
+            ._get_module(name)
+            .map(|id| OsLibraryHandle::new(&self.lock, id))
     }
 }
