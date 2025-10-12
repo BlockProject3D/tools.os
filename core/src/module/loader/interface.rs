@@ -72,7 +72,10 @@ impl<'a> Lock<'a> {
     ///
     /// This function assumes the module to be loaded, if it exists has the correct format otherwise
     /// this function is UB.
-    pub unsafe fn load_builtin(&mut self, name: &str) -> Result<module_handle!('_, VirtualLibrary), Error> {
+    pub unsafe fn load_builtin(
+        &mut self,
+        name: &str,
+    ) -> Result<module_handle!('_, VirtualLibrary), Error> {
         self.lock._load_builtin(name).map(|id| ModuleHandle {
             loader: &self.lock,
             id,
@@ -93,7 +96,10 @@ impl<'a> Lock<'a> {
     ///
     /// This function assumes the module to be loaded, if it exists has the correct format otherwise
     /// this function is UB.
-    pub unsafe fn load_self(&mut self, name: &str) -> crate::module::Result<module_handle!('_, OsLibrary)> {
+    pub unsafe fn load_self(
+        &mut self,
+        name: &str,
+    ) -> crate::module::Result<module_handle!('_, OsLibrary)> {
         self.lock._load_self(name).map(|id| ModuleHandle {
             loader: &self.lock,
             id,
@@ -121,7 +127,10 @@ impl<'a> Lock<'a> {
     /// if not, this function is UB. Additionally, if some dependency used in public facing APIs
     /// for the module are not added with [add_public_dependency](Self::add_public_dependency),
     /// this is also UB.
-    pub unsafe fn load(&mut self, name: &str) -> crate::module::Result<module_handle!('_, OsLibrary)> {
+    pub unsafe fn load(
+        &mut self,
+        name: &str,
+    ) -> crate::module::Result<module_handle!('_, OsLibrary)> {
         self.lock._load(name).map(|id| ModuleHandle {
             loader: &self.lock,
             id,
@@ -162,7 +171,12 @@ impl<'a> Lock<'a> {
     /// * `version`: the version of the dependency.
     ///
     /// returns: ()
-    pub fn add_public_dependency<'b>(&mut self, name: &str, version: &str, features: impl IntoIterator<Item = &'b str>) {
+    pub fn add_public_dependency<'b>(
+        &mut self,
+        name: &str,
+        version: &str,
+        features: impl IntoIterator<Item = &'b str>,
+    ) {
         self.lock._add_public_dependency(name, version, features);
     }
 
