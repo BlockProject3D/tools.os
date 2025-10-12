@@ -26,32 +26,65 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::module::error::Error;
 use crate::module::library::types::{OsLibrary, VirtualLibrary};
-use crate::module::library::Library;
 use crate::module::loader::ModuleLoader;
 use crate::module::Module;
-use std::ops::Deref;
 use std::path::Path;
 use std::sync::MutexGuard;
+use crate::module::library::Library;
+use crate::module::Result;
 
 /// Represents a handle to a [Module] stored in the application's [ModuleLoader].
-pub struct ModuleHandle<'a, L: Library, F: Fn(&ModuleLoader, usize) -> &Module<L>> {
-    loader: &'a ModuleLoader,
-    id: usize,
-    f: F,
+pub trait ModuleHandle {
+    /// The type of [Library] to return.
+    type Library: Library;
+
+    /// Returns a reference to the stored [Module] type.
+    fn get(&self) -> &Module<Self::Library>;
 }
 
-impl<'a, L: Library, F: Fn(&ModuleLoader, usize) -> &Module<L>> Deref for ModuleHandle<'a, L, F> {
-    type Target = Module<L>;
+struct VirtualLibraryHandle<'a> {
+    loader: &'a ModuleLoader,
+    id: usize
+}
 
-    fn deref(&self) -> &Self::Target {
-        (self.f)(self.loader, self.id)
+impl<'a> VirtualLibraryHandle<'a> {
+    fn new(loader: &'a ModuleLoader, id: usize) -> VirtualLibraryHandle<'a> {
+        VirtualLibraryHandle {
+            loader,
+            id
+        }
     }
 }
 
-macro_rules! module_handle {
-    ($l: lifetime, $t: ty) => { ModuleHandle<$l, $t, impl Fn(&ModuleLoader, usize) -> &Module<$t>> };
+impl<'a> ModuleHandle for VirtualLibraryHandle<'a> {
+    type Library = VirtualLibrary;
+
+    fn get(&self) -> &Module<VirtualLibrary> {
+        self.loader.builtin_modules.get(&self.id).unwrap()
+    }
+}
+
+struct OsLibraryHandle<'a> {
+    loader: &'a ModuleLoader,
+    id: usize
+}
+
+impl<'a> OsLibraryHandle<'a> {
+    fn new(loader: &'a ModuleLoader, id: usize) -> OsLibraryHandle<'a> {
+        OsLibraryHandle {
+            loader,
+            id
+        }
+    }
+}
+
+impl<'a> ModuleHandle for OsLibraryHandle<'a> {
+    type Library = OsLibrary;
+
+    fn get(&self) -> &Module<OsLibrary> {
+        self.loader.modules.get(&self.id).unwrap()
+    }
 }
 
 /// A structure that represents a lock to the application's [ModuleLoader].
@@ -72,12 +105,8 @@ impl<'a> Lock<'a> {
     ///
     /// This function assumes the module to be loaded, if it exists has the correct format otherwise
     /// this function is UB.
-    pub unsafe fn load_builtin(&mut self, name: &str) -> Result<module_handle!('_, VirtualLibrary), Error> {
-        self.lock._load_builtin(name).map(|id| ModuleHandle {
-            loader: &self.lock,
-            id,
-            f: |loader, id| loader.builtin_modules.get(&id).unwrap(),
-        })
+    pub unsafe fn load_builtin(&mut self, name: &str) -> Result<impl ModuleHandle + '_> {
+        self.lock._load_builtin(name).map(|id| VirtualLibraryHandle::new(&self.lock, id))
     }
 
     /// Attempts to load a module from the specified name which is dynamically linked in the current
@@ -93,12 +122,8 @@ impl<'a> Lock<'a> {
     ///
     /// This function assumes the module to be loaded, if it exists has the correct format otherwise
     /// this function is UB.
-    pub unsafe fn load_self(&mut self, name: &str) -> crate::module::Result<module_handle!('_, OsLibrary)> {
-        self.lock._load_self(name).map(|id| ModuleHandle {
-            loader: &self.lock,
-            id,
-            f: |lock, id| lock.modules.get(&id).unwrap(),
-        })
+    pub unsafe fn load_self(&mut self, name: &str) -> Result<impl ModuleHandle + '_> {
+        self.lock._load_self(name).map(|id| OsLibraryHandle::new(&self.lock, id))
     }
 
     /// Attempts to load a module from the specified name.
@@ -121,12 +146,8 @@ impl<'a> Lock<'a> {
     /// if not, this function is UB. Additionally, if some dependency used in public facing APIs
     /// for the module are not added with [add_public_dependency](Self::add_public_dependency),
     /// this is also UB.
-    pub unsafe fn load(&mut self, name: &str) -> crate::module::Result<module_handle!('_, OsLibrary)> {
-        self.lock._load(name).map(|id| ModuleHandle {
-            loader: &self.lock,
-            id,
-            f: |lock, id| lock.modules.get(&id).unwrap(),
-        })
+    pub unsafe fn load(&mut self, name: &str) -> Result<impl ModuleHandle + '_> {
+        self.lock._load(name).map(|id| OsLibraryHandle::new(&self.lock, id))
     }
 
     /// Attempts to unload the given module.
@@ -136,7 +157,7 @@ impl<'a> Lock<'a> {
     /// * `name`: the name of the module to unload.
     ///
     /// returns: ()
-    pub fn unload(&mut self, name: &str) -> crate::module::Result<()> {
+    pub fn unload(&mut self, name: &str) -> Result<()> {
         self.lock._unload(name)
     }
 
@@ -168,21 +189,13 @@ impl<'a> Lock<'a> {
 
     /// Returns the builtin module identified by the name `name`, returns [None] if the module is
     /// not loaded.
-    pub fn get_builtin(&self, name: &str) -> Option<module_handle!('_, VirtualLibrary)> {
-        self.lock._get_builtin(name).map(|id| ModuleHandle {
-            loader: &self.lock,
-            id,
-            f: |lock, id| lock.builtin_modules.get(&id).unwrap(),
-        })
+    pub fn get_builtin(&self, name: &str) -> Option<impl ModuleHandle + '_> {
+        self.lock._get_builtin(name).map(|id| VirtualLibraryHandle::new(&self.lock, id))
     }
 
     /// Returns the module identified by the name `name`, returns [None] if the module is
     /// not loaded.
-    pub fn get_module(&self, name: &str) -> Option<module_handle!('_, OsLibrary)> {
-        self.lock._get_module(name).map(|id| ModuleHandle {
-            loader: &self.lock,
-            id,
-            f: |lock, id| lock.modules.get(&id).unwrap(),
-        })
+    pub fn get_module(&self, name: &str) -> Option<impl ModuleHandle + '_> {
+        self.lock._get_module(name).map(|id| OsLibraryHandle::new(&self.lock, id))
     }
 }
