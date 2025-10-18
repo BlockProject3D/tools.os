@@ -27,82 +27,26 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::module::error::{Error, IncompatibleDependency, IncompatibleRustc};
-use crate::module::library::types::{OsLibrary, VirtualLibrary};
-use crate::module::library::{Library, OS_EXT};
-use crate::module::metadata::{Metadata as ModuleMetadata, Value};
-use crate::module::Module;
-use crate::module::RUSTC_VERSION;
+use crate::module::library::types::{OsLibrary, Symbol};
+use crate::module::library::Library;
+use crate::module::loader::ModuleLoader;
+use crate::module::metadata::Value;
+use crate::module::{Module, RUSTC_VERSION};
 use bp3d_debug::{debug, info, trace};
 use std::collections::{HashMap, HashSet};
 use std::ffi::{c_char, CStr};
 use std::fs::File;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::sync::Mutex;
 
-type DebugInit = extern "Rust" fn(engine: &'static dyn bp3d_debug::engine::Engine);
-
-/// Represents a module loader which can support loading multiple related modules.
-pub struct ModuleLoader {
-    paths: Vec<PathBuf>,
-    modules: HashMap<String, Module<OsLibrary>>,
-    builtin_modules: HashMap<String, Module<VirtualLibrary>>,
-    deps: DepsMap,
-    builtins: &'static [&'static VirtualLibrary],
-}
-
-const MOD_HEADER: &[u8] = b"BP3D_OS_MODULE|";
-
-fn parse_metadata(bytes: &[u8]) -> super::Result<ModuleMetadata> {
-    // Remove terminator NULL.
-    let bytes = &bytes[..bytes.len() - 1];
-    let mut map = HashMap::new();
-    let data = std::str::from_utf8(bytes).map_err(Error::InvalidUtf8)?;
-    let mut vars = data.split("|");
-    vars.next();
-    for var in vars {
-        let pos = var.find('=').ok_or(Error::InvalidMetadata)?;
-        let key = &var[..pos];
-        let value = &var[pos + 1..];
-        map.insert(key.into(), Value::new(value.into()));
-    }
-    Ok(map)
-}
-
-fn load_metadata(path: &Path) -> super::Result<ModuleMetadata> {
-    let mut file = File::open(path).map_err(Error::Io)?;
-    let mut buffer: [u8; 8192] = [0; 8192];
-    let mut v = Vec::new();
-    while file.read(&mut buffer).map_err(Error::Io)? > 0 {
-        let mut slice = &buffer[..];
-        while let Some(pos) = slice.iter().position(|v| *v == b'B') {
-            let inner = &slice[pos..];
-            let end = inner
-                .iter()
-                .position(|v| *v == 0)
-                .unwrap_or(inner.len() - 1);
-            v.extend_from_slice(&inner[..end + 1]);
-            if v[v.len() - 1] == 0 {
-                if v.starts_with(MOD_HEADER) {
-                    // We found the module metadata.
-                    return parse_metadata(&v);
-                }
-                v.clear();
-                slice = &inner[end + 1..];
-            } else {
-                break;
-            }
-        }
-    }
-    Err(Error::MissingMetadata)
-}
-
-struct Dependency {
+pub struct Dependency {
     pub version: String,
     pub features: Vec<String>,
     pub negative_features: Vec<String>,
 }
 
-struct DepsMap {
+pub struct DepsMap {
     pub deps_by_module: HashMap<String, HashMap<String, Dependency>>,
     pub module_by_dep: HashMap<String, Vec<String>>,
     pub module_version: HashMap<String, String>,
@@ -131,7 +75,7 @@ impl DepsMap {
         version: &Value,
         deps: &Value,
         features: &Value,
-    ) -> super::Result<()> {
+    ) -> crate::module::Result<()> {
         let mut deps3 = Vec::new();
         let mut features1: Vec<String> = Vec::new();
         if let Some(deps) = deps.parse_key_value_pairs() {
@@ -186,11 +130,63 @@ impl DepsMap {
     }
 }
 
+type DebugInit = extern "Rust" fn(engine: &'static dyn bp3d_debug::engine::Engine);
+
+type ModuleInit = extern "Rust" fn(engine: &'static Mutex<ModuleLoader>);
+
+type ModuleUninit = extern "Rust" fn();
+
+const MOD_HEADER: &[u8] = b"BP3D_OS_MODULE|";
+
+fn parse_metadata(bytes: &[u8]) -> crate::module::Result<crate::module::metadata::Metadata> {
+    // Remove terminator NULL.
+    let bytes = &bytes[..bytes.len() - 1];
+    let mut map = HashMap::new();
+    let data = std::str::from_utf8(bytes).map_err(Error::InvalidUtf8)?;
+    let mut vars = data.split("|");
+    vars.next();
+    for var in vars {
+        let pos = var.find('=').ok_or(Error::InvalidMetadata)?;
+        let key = &var[..pos];
+        let value = &var[pos + 1..];
+        map.insert(key.into(), Value::new(value.into()));
+    }
+    Ok(map)
+}
+
+fn load_metadata(path: &Path) -> crate::module::Result<crate::module::metadata::Metadata> {
+    let mut file = File::open(path).map_err(Error::Io)?;
+    let mut buffer: [u8; 8192] = [0; 8192];
+    let mut v = Vec::new();
+    while file.read(&mut buffer).map_err(Error::Io)? > 0 {
+        let mut slice = &buffer[..];
+        while let Some(pos) = slice.iter().position(|v| *v == b'B') {
+            let inner = &slice[pos..];
+            let end = inner
+                .iter()
+                .position(|v| *v == 0)
+                .unwrap_or(inner.len() - 1);
+            v.extend_from_slice(&inner[..end + 1]);
+            if v[v.len() - 1] == 0 {
+                if v.starts_with(MOD_HEADER) {
+                    // We found the module metadata.
+                    return parse_metadata(&v);
+                }
+                v.clear();
+                slice = &inner[end + 1..];
+            } else {
+                break;
+            }
+        }
+    }
+    Err(Error::MissingMetadata)
+}
+
 fn check_deps(
     deps: &Value,
     features: &Value,
     deps2: &HashMap<String, Dependency>,
-) -> super::Result<()> {
+) -> crate::module::Result<()> {
     if let Some(deps) = deps.parse_key_value_pairs() {
         for res in deps {
             let (name, version) = res?;
@@ -234,7 +230,10 @@ fn check_deps(
     Ok(())
 }
 
-fn check_metadata(metadata: &ModuleMetadata, deps3: &mut DepsMap) -> super::Result<()> {
+fn check_metadata(
+    metadata: &crate::module::metadata::Metadata,
+    deps3: &mut DepsMap,
+) -> crate::module::Result<()> {
     if metadata.get("TYPE").ok_or(Error::InvalidMetadata)?.as_str() == "RUST" {
         // This symbol is optional and will not exist on C/C++ modules, only on Rust based modules.
         // The main reason the rustc version is checked on Rust modules is for interop with user
@@ -302,11 +301,11 @@ fn check_metadata(metadata: &ModuleMetadata, deps3: &mut DepsMap) -> super::Resu
     Ok(())
 }
 
-unsafe fn load_lib(
+pub unsafe fn load_lib(
     deps3: &mut DepsMap,
     name: &str,
     path: &Path,
-) -> super::Result<Module<OsLibrary>> {
+) -> crate::module::Result<Module<OsLibrary>> {
     let metadata = load_metadata(path)?;
     check_metadata(&metadata, deps3)?;
     let module = Module::new(OsLibrary::load(path)?, metadata);
@@ -314,10 +313,10 @@ unsafe fn load_lib(
     Ok(module)
 }
 
-unsafe fn module_open<L: Library>(name: &str, module: &Module<L>) -> super::Result<()> {
+unsafe fn module_open<L: Library>(name: &str, module: &Module<L>) -> crate::module::Result<()> {
     let name = module.get_metadata_key("NAME").unwrap_or(name);
     let version = module.get_metadata_key("VERSION").unwrap_or("UNKNOWN");
-    info!("Opening module {}-{}", name, version);
+    info!("Opening module {}-{}...", name, version);
     if module
         .get_metadata_key("TYPE")
         .ok_or(Error::InvalidMetadata)?
@@ -328,6 +327,12 @@ unsafe fn module_open<L: Library>(name: &str, module: &Module<L>) -> super::Resu
             debug!("Initializing bp3d-debug for module: {}", name);
             debug_init.call(bp3d_debug::engine::get())
         }
+        let init_name = format!("bp3d_os_module_{}_init", name);
+        let sym: Symbol<ModuleInit> = module
+            .lib()
+            .load_symbol(init_name)?
+            .ok_or(Error::MissingModuleInitForRust)?;
+        sym.call(ModuleLoader::_instance());
     }
     let main_name = format!("bp3d_os_module_{}_open", name);
     if let Some(main) = module.lib().load_symbol::<extern "C" fn()>(main_name)? {
@@ -337,11 +342,41 @@ unsafe fn module_open<L: Library>(name: &str, module: &Module<L>) -> super::Resu
     Ok(())
 }
 
-unsafe fn load_by_symbol<L: Library>(
+pub unsafe fn module_close<L: Library>(
+    name: &str,
+    builtin: bool,
+    module: &Module<L>,
+) -> crate::module::Result<()> {
+    let name = module.get_metadata_key("NAME").unwrap_or(name);
+    let version = module.get_metadata_key("VERSION").unwrap_or("UNKNOWN");
+    info!("Closing module {}-{}...", name, version);
+    if !builtin
+        && module
+            .get_metadata_key("TYPE")
+            .ok_or(Error::InvalidMetadata)?
+            == "RUST"
+    {
+        let init_name = format!("bp3d_os_module_{}_uninit", name);
+        let sym: Symbol<ModuleUninit> = module
+            .lib()
+            .load_symbol(init_name)?
+            .ok_or(Error::MissingModuleInitForRust)?;
+        debug!("module_uninit");
+        sym.call();
+    }
+    let main_name = format!("bp3d_os_module_{}_close", &name);
+    if let Some(main) = unsafe { module.lib().load_symbol::<extern "C" fn()>(main_name)? } {
+        debug!("module_close");
+        main.call();
+    }
+    Ok(())
+}
+
+pub unsafe fn load_by_symbol<L: Library>(
     lib: L,
     name: &str,
     deps: &mut DepsMap,
-) -> super::Result<Module<L>> {
+) -> crate::module::Result<Module<L>> {
     let mod_const_name = format!("BP3D_OS_MODULE_{}", name.to_uppercase());
     if let Some(sym) = lib.load_symbol::<*const c_char>(mod_const_name)? {
         let bytes = CStr::from_ptr((*sym.as_ptr()).offset(1)).to_bytes_with_nul();
@@ -354,221 +389,9 @@ unsafe fn load_by_symbol<L: Library>(
     Err(Error::NotFound(name.into()))
 }
 
-impl Default for ModuleLoader {
-    fn default() -> Self {
-        let mut this = ModuleLoader {
-            paths: Default::default(),
-            modules: Default::default(),
-            deps: DepsMap::new(),
-            builtin_modules: Default::default(),
-            builtins: &[],
-        };
-        this.add_public_dependency(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"), ["*"]);
-        this.add_public_dependency("bp3d-debug", "1.0.0", ["*"]);
-        this
-    }
-}
-
-impl ModuleLoader {
-    /// Create a new instance of a [ModuleLoader].
-    // Apparently clippy prefers code duplication, well I said no...
-    #[allow(clippy::field_reassign_with_default)]
-    pub fn new(builtins: &'static [&'static VirtualLibrary]) -> ModuleLoader {
-        let mut def = Self::default();
-        def.builtins = builtins;
-        def
-    }
-
-    /// Attempts to load the given builtin module from its name.
-    ///
-    /// # Arguments
-    ///
-    /// * `name`: the name of the builtin module to load.
-    ///
-    /// returns: Result<&Module<VirtualLibrary>, Error>
-    ///
-    /// # Safety
-    ///
-    /// This function assumes the module to be loaded, if it exists has the correct format otherwise
-    /// this function is UB.
-    pub unsafe fn load_builtin(&mut self, name: &str) -> super::Result<&Module<VirtualLibrary>> {
-        debug!("Loading builtin module: {}", name);
-        let name = name.replace("-", "_");
-        if self.builtin_modules.contains_key(&name) {
-            Ok(unsafe { self.builtin_modules.get(&name).unwrap_unchecked() })
-        } else {
-            for builtin in self.builtins {
-                if builtin.name() == name {
-                    let module = unsafe { load_by_symbol(**builtin, &name, &mut self.deps) }
-                        .map_err(|e| match e {
-                            Error::NotFound(_) => Error::MissingMetadata,
-                            e => e,
-                        })?;
-                    return Ok(self.builtin_modules.entry(name).or_insert(module));
-                }
-            }
-            Err(Error::NotFound(name))
-        }
-    }
-
-    /// Attempts to load a module from the specified name which is dynamically linked in the current
-    /// running software.
-    ///
-    /// # Arguments
-    ///
-    /// * `name`: the name of the module to be loaded.
-    ///
-    /// returns: Result<&Module, Error>
-    ///
-    /// # Safety
-    ///
-    /// This function assumes the module to be loaded, if it exists has the correct format otherwise
-    /// this function is UB.
-    pub unsafe fn load_self(&mut self, name: &str) -> super::Result<&Module<OsLibrary>> {
-        debug!("Loading static module: {}", name);
-        let name = name.replace("-", "_");
-        if self.modules.contains_key(&name) {
-            unsafe { Ok(self.modules.get(&name).unwrap_unchecked()) }
-        } else {
-            let this = OsLibrary::open_self()?;
-            let module = unsafe { load_by_symbol(this, &name, &mut self.deps) }?;
-            Ok(self.modules.entry(name).or_insert(module))
-        }
-    }
-
-    /// Attempts to load a module from the specified name.
-    ///
-    /// This function already does check for the version of rustc and dependencies for Rust based
-    /// modules to ensure maximum ABI compatibility.
-    ///
-    /// This function assumes the code to be loaded is trusted and delegates this operation to the
-    /// underlying OS.
-    ///
-    /// # Arguments
-    ///
-    /// * `name`: the name of the module to be loaded.
-    ///
-    /// returns: ()
-    ///
-    /// # Safety
-    ///
-    /// It is assumed that the module is intended to be used with this instance of [ModuleLoader];
-    /// if not, this function is UB. Additionally, if some dependency used in public facing APIs
-    /// for the module are not added with [add_public_dependency](Self::add_public_dependency),
-    /// this is also UB.
-    pub unsafe fn load(&mut self, name: &str) -> super::Result<&Module<OsLibrary>> {
-        debug!("Loading dynamic module: {}", name);
-        let name = name.replace("-", "_");
-        if self.modules.contains_key(&name) {
-            Ok(self.modules.get(&name).unwrap_unchecked())
-        } else {
-            let name2 = format!("{}.{}", name, OS_EXT);
-            let name3 = format!("lib{}.{}", name, OS_EXT);
-            for path in self.paths.iter() {
-                let search = path.join(&name2);
-                let search2 = path.join(&name3);
-                let mut module = None;
-                if search.exists() {
-                    module = Some(load_lib(&mut self.deps, &name, &search)?);
-                } else if search2.exists() {
-                    module = Some(load_lib(&mut self.deps, &name, &search2)?);
-                }
-                if let Some(module) = module {
-                    self.modules.insert(name.clone(), module);
-                    return Ok(&self.modules[&name]);
-                }
-            }
-            Err(Error::NotFound(name))
-        }
-    }
-
-    /// Attempts to unload the given module.
-    ///
-    /// # Arguments
-    ///
-    /// * `name`: the name of the module to unload.
-    ///
-    /// returns: ()
-    pub fn unload(&mut self, name: &str) -> super::Result<()> {
-        debug!("Closing module: {}", name);
-        let name = name.replace("-", "_");
-        if self.modules.contains_key(&name) {
-            let module = unsafe { self.modules.remove(&name).unwrap_unchecked() };
-            let main_name = format!("bp3d_os_module_{}_close", &name);
-            if let Some(main) = unsafe { module.lib().load_symbol::<extern "C" fn()>(main_name)? } {
-                main.call();
-            }
-            drop(module);
-        } else {
-            let module = self
-                .builtin_modules
-                .remove(&name)
-                .ok_or_else(|| Error::NotFound(name.clone()))?;
-            let main_name = format!("bp3d_os_module_{}_close", &name);
-            if let Some(main) = unsafe { module.lib().load_symbol::<extern "C" fn()>(main_name)? } {
-                main.call();
-            }
-        }
-        Ok(())
-    }
-
-    /// Adds the given path to the path search list.
-    ///
-    /// # Arguments
-    ///
-    /// * `path`: the path to include.
-    ///
-    /// returns: ()
-    pub fn add_search_path(&mut self, path: impl AsRef<Path>) {
-        self.paths.push(path.as_ref().into());
-    }
-
-    /// Adds a public facing API dependency to the list of dependency for version checks.
-    ///
-    /// This is used to check if there are any ABI incompatibilities between dependency versions
-    /// when loading a Rust based module.
-    ///
-    /// # Arguments
-    ///
-    /// * `name`: the name of the dependency.
-    /// * `version`: the version of the dependency.
-    ///
-    /// returns: ()
-    pub fn add_public_dependency<'a>(
-        &mut self,
-        name: &str,
-        version: &str,
-        features: impl IntoIterator<Item = &'a str>,
-    ) {
-        let mut negative_features = Vec::new();
-        let features = features
-            .into_iter()
-            .filter_map(|s| {
-                if s.starts_with("-") {
-                    negative_features.push(s.into());
-                    return None;
-                }
-                if s != "*" {
-                    Some(String::from(name) + s)
-                } else {
-                    Some("*".into())
-                }
-            })
-            .collect();
-        self.deps.add_dep(
-            name.replace("-", "_"),
-            Dependency {
-                version: version.into(),
-                features,
-                negative_features,
-            },
-        )
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::module::loader::{check_metadata, Dependency, DepsMap};
+    use super::{check_metadata, Dependency, DepsMap};
     use crate::module::metadata::{Metadata, Value};
     use crate::module::RUSTC_VERSION;
 

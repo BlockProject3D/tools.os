@@ -29,6 +29,7 @@
 use crate::module;
 use crate::module::error::Error;
 use crate::module::library::symbol::Symbol;
+use bp3d_debug::debug;
 use libc::{dlclose, dlopen, dlsym, RTLD_LAZY};
 use std::ffi::{c_void, CString};
 use std::fmt::Debug;
@@ -45,6 +46,8 @@ pub const EXT: &str = "so";
 #[derive(Debug)]
 #[repr(transparent)]
 pub struct Library(*mut c_void);
+
+unsafe impl Send for Library {}
 
 impl Library {
     /// Attempts to open a handle to the current running program.
@@ -95,6 +98,7 @@ impl super::Library for Library {
 
 impl Drop for Library {
     fn drop(&mut self) {
+        debug!("dlclose");
         unsafe { dlclose(self.0) };
     }
 }

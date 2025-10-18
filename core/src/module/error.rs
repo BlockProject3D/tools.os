@@ -100,6 +100,9 @@ simple_error! {
         /// Missing VERSION key for a module.
         MissingModuleVersion => "missing VERSION metadata key",
 
+        /// Missing bp3d_os_module_<name>_init symbol for a Rust based module.
+        MissingModuleInitForRust => "missing module init function for a Rust module",
+
         /// The given string was not UTF8.
         InvalidUtf8(Utf8Error) => "invalid utf8: {}",
 

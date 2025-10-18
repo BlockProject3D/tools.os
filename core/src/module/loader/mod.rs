@@ -26,37 +26,11 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! This module provides tools to load symbols from external libraries/plugins.
+//! This module contains the implementation of the module loader.
 
-/// The rustc version being used (note this version includes the null terminator for simplified
-/// generation.
-pub const RUSTC_VERSION: &str = env!("RUSTC_VERSION");
+mod core;
+mod interface;
+mod util;
 
-/// The type of result when managing module.
-pub type Result<T> = std::result::Result<T, error::Error>;
-
-pub mod error;
-
-pub mod loader;
-
-#[allow(clippy::module_inception)]
-mod module;
-
-pub mod library;
-
-pub mod metadata;
-
-pub use module::Module;
-
-/// Link the set of modules statically.
-///
-/// Note: the modules must be available as Cargo dependencies.
-#[macro_export]
-macro_rules! link_modules {
-    ($($module: ident),*) => {
-        #[used]
-        static BUILTIN_MODULES: &'static [&'static $crate::module::library::types::VirtualLibrary] = &[
-            $(&$module::VIRTUAL_MODULE),*
-        ];
-    };
-}
+pub use core::ModuleLoader;
+pub use interface::*;
