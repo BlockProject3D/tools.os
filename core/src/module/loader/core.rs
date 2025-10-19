@@ -329,6 +329,10 @@ impl ModuleLoader {
         self.paths.push(path.as_ref().into());
     }
 
+    pub(super) fn _remove_search_path(&mut self, path: impl AsRef<Path>) {
+        self.paths.retain(|p| p != path.as_ref());
+    }
+
     pub(super) fn _add_public_dependency<'a>(
         &mut self,
         name: &str,

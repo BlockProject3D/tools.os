@@ -172,6 +172,17 @@ impl<'a> Lock<'a> {
         self.lock._add_search_path(path);
     }
 
+    /// Removes the given path to the path search list.
+    ///
+    /// # Arguments
+    ///
+    /// * `path`: the path to remove.
+    ///
+    /// returns: ()
+    pub fn remove_search_path(&mut self, path: impl AsRef<Path>) {
+        self.lock._remove_search_path(path);
+    }
+
     /// Adds a public facing API dependency to the list of dependency for version checks.
     ///
     /// This is used to check if there are any ABI incompatibilities between dependency versions
