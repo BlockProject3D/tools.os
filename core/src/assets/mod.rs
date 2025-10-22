@@ -71,9 +71,13 @@ use windows::{get_exe_path, get_resources_dir};
 pub fn get_app_bundled_asset(file_name: &str) -> Option<PathBuf> {
     let res = get_resources_dir()
         .map(|v| v.join(file_name))
-        .or_else(|| get_exe_path().map(|v| v.join("Assets").join(file_name)));
+        .or_else(|| get_exe_path().map(|v| v.join("..").join("Assets").join(file_name)));
     if res.as_ref().map(|v| !v.exists()).unwrap_or(false) {
-        return None;
+        let res = get_exe_path().map(|v| v.join("Assets").join(file_name));
+        if res.as_ref().map(|v| !v.exists()).unwrap_or(false) {
+            return None;
+        }
+        return res;
     }
     res
 }
