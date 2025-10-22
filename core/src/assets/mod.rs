@@ -1,4 +1,4 @@
-// Copyright (c) 2023, BlockProject 3D
+// Copyright (c) 2025, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -76,4 +76,35 @@ pub fn get_app_bundled_asset(file_name: &str) -> Option<PathBuf> {
         return None;
     }
     res
+}
+
+/// Returns the path to the executable. This is useful for loading assets in CLI based applications.
+///
+/// # Platform specific behavior
+///
+/// On supported platforms this returns the path to the current executing program.
+/// Supported platforms are:
+/// - Any Linux/Unix with a procfs,
+/// - macOS,
+/// - iOS
+///
+/// Returns None if there is a system issue, ex: the system didn't return a proper path to the current
+/// executing application. This should rarely occur.
+pub fn get_executable_path() -> Option<PathBuf> {
+    get_exe_path()
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::assets::{get_app_bundled_asset, get_executable_path};
+
+    #[test]
+    fn test() {
+        assert!(get_executable_path().is_some());
+    }
+
+    #[test]
+    fn test2() {
+        assert!(get_app_bundled_asset("file.txt").is_none());
+    }
 }
