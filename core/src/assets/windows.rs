@@ -67,7 +67,7 @@ pub fn get_exe_path() -> Option<PathBuf> {
         }
         //We finally found the executable file name!
         let str1 = OsString::from_wide(&buf[..res as usize]);
-        Some(str1.into())
+        Some(PathBuf::from(str1).parent()?.into())
     }
 }
 

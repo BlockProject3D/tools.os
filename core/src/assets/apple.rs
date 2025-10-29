@@ -53,14 +53,14 @@ pub fn get_exe_path() -> Option<PathBuf> {
                 return None;
             }
             let str = OsStr::from_bytes(std::mem::transmute(&v[..size as usize]));
-            return Some(PathBuf::from(str));
+            return PathBuf::from(str).parent().map(|v| v.into())
         }
         if res != 0 {
             return None;
         }
         let len = strlen(buf.as_ptr());
         let str = OsStr::from_bytes(std::mem::transmute(&buf[..len]));
-        Some(PathBuf::from(str))
+        PathBuf::from(str).parent().map(|v| v.into())
     }
 }
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2023, BlockProject 3D
+// Copyright (c) 2025, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -56,10 +56,11 @@ pub fn get_exe_path() -> Option<PathBuf> {
             //This is where we defer from process_path: we use std::os::unix::ffi::OsStrExt.
             let str = OsStr::from_bytes(&buf[..len]);
             let path = PathBuf::from(str);
-            Some(path)
+            path.parent().map(|v| v.into())
         } else {
             //FreeBSD with procfs.
             std::fs::read_link("/proc/curproc/file").ok()
+                .map(|v| v.parent().map(PathBuf::from)).flatten()
         }
     }
 }
