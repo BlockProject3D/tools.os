@@ -59,8 +59,10 @@ pub fn get_exe_path() -> Option<PathBuf> {
             path.parent().map(|v| v.into())
         } else {
             //FreeBSD with procfs.
-            std::fs::read_link("/proc/curproc/file").ok()
-                .map(|v| v.parent().map(PathBuf::from)).flatten()
+            std::fs::read_link("/proc/curproc/file")
+                .ok()
+                .map(|v| v.parent().map(PathBuf::from))
+                .flatten()
         }
     }
 }
