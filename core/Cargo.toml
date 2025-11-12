@@ -1,6 +1,6 @@
 [package]
 name = "bp3d-os"
-version = "2.2.1"
+version = "2.2.2"
 authors = ["Yuri Edward <yuri6037@outlook.com>"]
 edition = "2021"
 description = "Operating System tools designed for BlockProject3D"
@@ -17,7 +17,7 @@ categories = ["os"]
 # Normal dependencies
 time = { version = "0.3.43", optional = true }
 bp3d-util = { version = "2.2.0", features = [], optional = true }
-bp3d-debug = { version = "1.0.0", optional = true }
+bp3d-debug = { version = "1.0.1", optional = true }
 
 # Apple and BSD
 [target.'cfg(not(windows))'.dependencies]
