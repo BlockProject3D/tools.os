@@ -53,7 +53,7 @@ pub fn get_exe_path() -> Option<PathBuf> {
                 return None;
             }
             let str = OsStr::from_bytes(std::mem::transmute(&v[..size as usize]));
-            return PathBuf::from(str).parent().map(|v| v.into())
+            return PathBuf::from(str).parent().map(|v| v.into());
         }
         if res != 0 {
             return None;
