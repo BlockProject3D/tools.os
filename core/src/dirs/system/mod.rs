@@ -1,4 +1,4 @@
-// Copyright (c) 2023, BlockProject 3D
+// Copyright (c) 2026, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -139,13 +139,13 @@ pub fn get_app_documents() -> Option<PathBuf> {
 ///
 /// # Platform specific behavior
 ///
-/// | System               | Directory Name    | Usual path          |
-/// |----------------------|-------------------|---------------------|
-/// | macOS                | NS_USER_DIRECTORY | /Users/{username}   |
-/// | macOS (with sandbox) | NS_USER_DIRECTORY | /Users/{username}   |
-/// | iOS                  | None              | None                |
-/// | Linux                | HOME              | /home/{username}    |
-/// | Windows              | FOLDERID_Profile  | C:\Users\{username} |
+/// | System               | Directory Name              | Usual path          |
+/// |----------------------|-----------------------------|---------------------|
+/// | macOS                | homeDirectoryForCurrentUser | /Users/{username}   |
+/// | macOS (with sandbox) | homeDirectoryForCurrentUser | /Users/{username}   |
+/// | iOS                  | None                        | None                |
+/// | Linux                | HOME                        | /home/{username}    |
+/// | Windows              | FOLDERID_Profile            | C:\Users\{username} |
 pub fn get_user_home() -> Option<PathBuf> {
     _impl::get_user_home()
 }
@@ -178,4 +178,36 @@ pub fn get_user_documents() -> Option<PathBuf> {
 /// | Windows              | FOLDERID_Downloads     | C:\Users\{username}\Downloads |
 pub fn get_user_downloads() -> Option<PathBuf> {
     _impl::get_user_downloads()
+}
+
+/// Returns the temporary directory.
+///
+/// # Platform specific behavior
+///
+/// | System               | Directory Name         | Usual path                    |
+/// |----------------------|------------------------|-------------------------------|
+/// | macOS                | temporaryDirectory     | /tmp                          |
+/// | macOS (with sandbox) | temporaryDirectory     | Not applicable                |
+/// | iOS                  | temporaryDirectory     | Not applicable                |
+/// | Linux                | TMPDIR                 | /tmp                          |
+/// | Windows              | GetTempPath2W          | C:\Windows\Temp               |
+pub fn get_temp_dir() -> Option<PathBuf> {
+    _impl::get_temp_dir()
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::dirs::system::{get_user_documents, get_user_downloads, get_user_home, get_temp_dir};
+
+    #[test]
+    fn basic() {
+        let path = get_user_home();
+        let path1 = get_user_documents();
+        let path2 = get_user_downloads();
+        let path3 = get_temp_dir();
+        assert!(path1.is_some());
+        assert!(path2.is_some());
+        assert!(path.is_some());
+        assert!(path3.is_some());
+    }
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2023, BlockProject 3D
+// Copyright (c) 2026, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -26,10 +26,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::dirs::system::apple_shared::{
-    get_macos_dir, NS_APPLICATION_SUPPORT_DIRECTORY, NS_CACHES_DIRECTORY, NS_DOCUMENT_DIRECTORY,
-    NS_LIBRARY_DIRECTORY,
-};
+use crate::dirs::system::apple_shared::{get_macos_dir, NS_APPLICATION_SUPPORT_DIRECTORY, NS_CACHES_DIRECTORY, NS_DOCUMENT_DIRECTORY, NS_LIBRARY_DIRECTORY};
 use std::path::PathBuf;
 
 pub fn get_app_cache() -> Option<PathBuf> {
@@ -61,4 +58,8 @@ pub fn get_user_documents() -> Option<PathBuf> {
 }
 pub fn get_user_downloads() -> Option<PathBuf> {
     None
+}
+
+pub fn get_temp_dir() -> Option<PathBuf> {
+    Some(crate::dirs::system::apple_shared::get_temp_dir().map(PathBuf::from).unwrap_or(PathBuf::from("/tmp")))
 }

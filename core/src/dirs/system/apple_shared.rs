@@ -1,4 +1,4 @@
-// Copyright (c) 2025, BlockProject 3D
+// Copyright (c) 2026, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -53,6 +53,42 @@ pub fn get_macos_dir(directory: c_ulong) -> Option<String> {
             msg_send![instance, URLsForDirectory:directory inDomains:NS_USER_DOMAIN_MASK];
         let obj: Option<&Object> = msg_send![directories, firstObject];
         if let Some(obj) = obj {
+            let str: Option<&Object> = msg_send![obj, path];
+            match str {
+                Some(v) => Some(String::from(ns_string_to_string(v))),
+                None => None,
+            }
+        } else {
+            None
+        }
+    }
+}
+
+pub fn get_temp_dir() -> Option<String> {
+    unsafe {
+        let nsfilemanager = class!(NSFileManager);
+        let instance: &Object = msg_send![nsfilemanager, defaultManager];
+        let directory: Option<&Object> =
+            msg_send![instance, temporaryDirectory];
+        if let Some(obj) = directory {
+            let str: Option<&Object> = msg_send![obj, path];
+            match str {
+                Some(v) => Some(String::from(ns_string_to_string(v))),
+                None => None,
+            }
+        } else {
+            None
+        }
+    }
+}
+
+pub fn get_user_home() -> Option<String> {
+    unsafe {
+        let nsfilemanager = class!(NSFileManager);
+        let instance: &Object = msg_send![nsfilemanager, defaultManager];
+        let directory: Option<&Object> =
+            msg_send![instance, homeDirectoryForCurrentUser];
+        if let Some(obj) = directory {
             let str: Option<&Object> = msg_send![obj, path];
             match str {
                 Some(v) => Some(String::from(ns_string_to_string(v))),
