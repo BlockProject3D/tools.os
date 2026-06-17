@@ -1,4 +1,4 @@
-// Copyright (c) 2025, BlockProject 3D
+// Copyright (c) 2026, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -697,5 +697,89 @@ mod tests {
         metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
         metadata.insert("FEATURES".into(), Value::new("a/abc,a/def".into()));
         check_metadata(&metadata, &mut deps).unwrap_err();
+    }
+
+    #[test]
+    fn test_master_incompatible_feature_set_3() {
+        let mut deps = DepsMap::new();
+        deps.add_dep(
+            "a".into(),
+            Dependency {
+                version: "1.0.0".into(),
+                features: vec!["a/abc".into()],
+                negative_features: vec![],
+            },
+        );
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/def".into()));
+        check_metadata(&metadata, &mut deps).unwrap_err();
+    }
+
+    #[test]
+    fn test_master_incompatible_feature_set_4() {
+        let mut deps = DepsMap::new();
+        deps.add_dep(
+            "a".into(),
+            Dependency {
+                version: "1.0.0".into(),
+                features: vec!["a/abc".into()],
+                negative_features: vec![],
+            },
+        );
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/abc,a/def".into()));
+        check_metadata(&metadata, &mut deps).unwrap_err();
+    }
+
+    #[test]
+    fn test_master_5() {
+        let mut deps = DepsMap::new();
+        deps.add_dep(
+            "a".into(),
+            Dependency {
+                version: "1.0.0".into(),
+                features: vec!["a/abc".into(), "*".into()],
+                negative_features: vec![],
+            },
+        );
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/abc,a/def".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
+    }
+
+    #[test]
+    fn test_master_6() {
+        let mut deps = DepsMap::new();
+        deps.add_dep(
+            "a".into(),
+            Dependency {
+                version: "1.0.0".into(),
+                features: vec!["a/abc".into()],
+                negative_features: vec![],
+            },
+        );
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/abc".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
     }
 }
