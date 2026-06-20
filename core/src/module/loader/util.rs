@@ -1,4 +1,4 @@
-// Copyright (c) 2025, BlockProject 3D
+// Copyright (c) 2026, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -32,7 +32,7 @@ use crate::module::library::Library;
 use crate::module::loader::ModuleLoader;
 use crate::module::metadata::Value;
 use crate::module::{Module, RUSTC_VERSION};
-use bp3d_debug::{debug, info, trace};
+use bp3d_debug::{debug, error, info, trace};
 use std::collections::{HashMap, HashSet};
 use std::ffi::{c_char, CStr};
 use std::fs::File;
@@ -192,6 +192,7 @@ fn check_deps(
             let (name, version) = res?;
             if let Some(dep) = deps2.get(&name) {
                 if version != dep.version {
+                    error!("Dependency {} uses incompatible version {}", name, version);
                     return Err(Error::IncompatibleDep(IncompatibleDependency {
                         name,
                         expected_version: dep.version.clone(),
@@ -204,6 +205,10 @@ fn check_deps(
                     let mut flag = true;
                     for feature in dep.negative_features.iter() {
                         if features.contains(&**feature) {
+                            error!(
+                                "Dependency {} contains incompatible feature {}",
+                                name, feature
+                            );
                             return Err(Error::IncompatibleFeatureSet(name));
                         }
                     }
@@ -215,13 +220,19 @@ fn check_deps(
                             break;
                         }
                         if !features.contains(&**feature) {
+                            error!(
+                                "Dependency {} is missing a required feature {}",
+                                name, feature
+                            );
                             return Err(Error::IncompatibleFeatureSet(name));
                         }
                     }
                     if flag && (features.len() != dep.features.len()) {
+                        error!("Feature set length does not match for dependency {}", name);
                         return Err(Error::IncompatibleFeatureSet(name));
                     }
                 } else if !dep.features.is_empty() {
+                    error!("Feature set is unexpectedly empty for dependency {}", name);
                     return Err(Error::IncompatibleFeatureSet(name));
                 }
             }
@@ -253,6 +264,7 @@ fn check_metadata(
         let features = metadata
             .get("FEATURES")
             .ok_or(Error::MissingFeaturesForRust)?;
+        trace!({name=module_name.as_str()} {deps=deps.as_str()} {version=module_version.as_str()} {rustc=rustc_version.as_str()} {features=features.as_str()}, "Checking dependencies against master...");
         if rustc_version.as_str() != RUSTC_VERSION {
             //mismatch between rust versions
             return Err(Error::RustcVersionMismatch(IncompatibleRustc {
@@ -261,6 +273,7 @@ fn check_metadata(
             }));
         }
         check_deps(deps, features, &deps3.master)?;
+        trace!({ name = module_name.as_str() }, "Dependencies validated!");
         if let Some(modules) = deps3.get_module_by_dep(module_name.as_str()) {
             debug!(
                 "Checking dependencies for {} against other modules...",
@@ -697,5 +710,89 @@ mod tests {
         metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
         metadata.insert("FEATURES".into(), Value::new("a/abc,a/def".into()));
         check_metadata(&metadata, &mut deps).unwrap_err();
+    }
+
+    #[test]
+    fn test_master_incompatible_feature_set_3() {
+        let mut deps = DepsMap::new();
+        deps.add_dep(
+            "a".into(),
+            Dependency {
+                version: "1.0.0".into(),
+                features: vec!["a/abc".into()],
+                negative_features: vec![],
+            },
+        );
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/def".into()));
+        check_metadata(&metadata, &mut deps).unwrap_err();
+    }
+
+    #[test]
+    fn test_master_incompatible_feature_set_4() {
+        let mut deps = DepsMap::new();
+        deps.add_dep(
+            "a".into(),
+            Dependency {
+                version: "1.0.0".into(),
+                features: vec!["a/abc".into()],
+                negative_features: vec![],
+            },
+        );
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/abc,a/def".into()));
+        check_metadata(&metadata, &mut deps).unwrap_err();
+    }
+
+    #[test]
+    fn test_master_5() {
+        let mut deps = DepsMap::new();
+        deps.add_dep(
+            "a".into(),
+            Dependency {
+                version: "1.0.0".into(),
+                features: vec!["a/abc".into(), "*".into()],
+                negative_features: vec![],
+            },
+        );
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/abc,a/def".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
+    }
+
+    #[test]
+    fn test_master_6() {
+        let mut deps = DepsMap::new();
+        deps.add_dep(
+            "a".into(),
+            Dependency {
+                version: "1.0.0".into(),
+                features: vec!["a/abc".into()],
+                negative_features: vec![],
+            },
+        );
+        let mut metadata = Metadata::new();
+        metadata.insert("TYPE".into(), Value::new("RUST".into()));
+        metadata.insert("RUSTC".into(), Value::new(RUSTC_VERSION.into()));
+        metadata.insert("NAME".into(), Value::new("test".into()));
+        metadata.insert("VERSION".into(), Value::new("1.0.0".into()));
+        metadata.insert("DEPS".into(), Value::new("a=1.0.0,b=2.0.0".into()));
+        metadata.insert("FEATURES".into(), Value::new("a/abc".into()));
+        check_metadata(&metadata, &mut deps).unwrap();
     }
 }

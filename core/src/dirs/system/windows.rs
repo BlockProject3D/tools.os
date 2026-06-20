@@ -1,4 +1,4 @@
-// Copyright (c) 2025, BlockProject 3D
+// Copyright (c) 2026, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -31,7 +31,8 @@ use std::os::windows::ffi::OsStringExt;
 use std::path::PathBuf;
 use windows_sys::core::GUID;
 use windows_sys::core::PWSTR;
-use windows_sys::Win32::Foundation::S_OK;
+use windows_sys::Win32::Foundation::{MAX_PATH, S_OK};
+use windows_sys::Win32::Storage::FileSystem::GetTempPath2W;
 use windows_sys::Win32::System::Com::CoTaskMemFree;
 use windows_sys::Win32::UI::Shell::{
     FOLDERID_Documents, FOLDERID_Downloads, FOLDERID_LocalAppData, FOLDERID_Profile,
@@ -87,4 +88,14 @@ pub fn get_user_documents() -> Option<PathBuf> {
 
 pub fn get_user_downloads() -> Option<PathBuf> {
     get_windows_path(FOLDERID_Downloads)
+}
+
+pub fn get_temp_dir() -> Option<PathBuf> {
+    let mut buf: [u16; (MAX_PATH + 2) as usize] = [0; (MAX_PATH + 2) as usize];
+    let len = unsafe { GetTempPath2W(MAX_PATH + 1, &mut buf as _) };
+    if len == 0 {
+        return None;
+    }
+    let str1 = OsString::from_wide(&buf[..len as usize]);
+    Some(PathBuf::from(str1))
 }

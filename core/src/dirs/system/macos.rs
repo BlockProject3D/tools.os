@@ -1,4 +1,4 @@
-// Copyright (c) 2023, BlockProject 3D
+// Copyright (c) 2026, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -29,7 +29,6 @@
 use crate::dirs::system::apple_shared::{
     get_macos_dir, get_macos_dir_fail_if_sandbox, NS_APPLICATION_SUPPORT_DIRECTORY,
     NS_CACHES_DIRECTORY, NS_DOCUMENT_DIRECTORY, NS_DOWNLOADS_DIRECTORY, NS_LIBRARY_DIRECTORY,
-    NS_USER_DIRECTORY,
 };
 use std::path::PathBuf;
 
@@ -63,7 +62,7 @@ pub fn get_app_documents() -> Option<PathBuf> {
 }
 
 pub fn get_user_home() -> Option<PathBuf> {
-    get_macos_dir(NS_USER_DIRECTORY).map(PathBuf::from)
+    crate::dirs::system::apple_shared::get_user_home().map(PathBuf::from)
 }
 
 pub fn get_user_documents() -> Option<PathBuf> {
@@ -72,4 +71,12 @@ pub fn get_user_documents() -> Option<PathBuf> {
 
 pub fn get_user_downloads() -> Option<PathBuf> {
     get_macos_dir_fail_if_sandbox(NS_DOWNLOADS_DIRECTORY)
+}
+
+pub fn get_temp_dir() -> Option<PathBuf> {
+    Some(
+        crate::dirs::system::apple_shared::get_temp_dir()
+            .map(PathBuf::from)
+            .unwrap_or(PathBuf::from("/tmp")),
+    )
 }

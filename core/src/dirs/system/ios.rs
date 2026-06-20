@@ -1,4 +1,4 @@
-// Copyright (c) 2023, BlockProject 3D
+// Copyright (c) 2026, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -61,4 +61,12 @@ pub fn get_user_documents() -> Option<PathBuf> {
 }
 pub fn get_user_downloads() -> Option<PathBuf> {
     None
+}
+
+pub fn get_temp_dir() -> Option<PathBuf> {
+    Some(
+        crate::dirs::system::apple_shared::get_temp_dir()
+            .map(PathBuf::from)
+            .unwrap_or(PathBuf::from("/tmp")),
+    )
 }

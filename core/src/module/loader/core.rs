@@ -1,4 +1,4 @@
-// Copyright (c) 2025, BlockProject 3D
+// Copyright (c) 2026, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -339,23 +339,24 @@ impl ModuleLoader {
         version: &str,
         features: impl IntoIterator<Item = &'a str>,
     ) {
+        let name = name.replace("-", "_");
         let mut negative_features = Vec::new();
         let features = features
             .into_iter()
             .filter_map(|s| {
                 if s.starts_with("-") {
-                    negative_features.push(s.into());
+                    negative_features.push(name.clone() + "/" + s.into());
                     return None;
                 }
                 if s != "*" {
-                    Some(String::from(name) + s)
+                    Some(name.clone() + "/" + s)
                 } else {
                     Some("*".into())
                 }
             })
             .collect();
         self.deps.add_dep(
-            name.replace("-", "_"),
+            name,
             Dependency {
                 version: version.into(),
                 features,

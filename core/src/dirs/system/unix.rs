@@ -1,4 +1,4 @@
-// Copyright (c) 2023, BlockProject 3D
+// Copyright (c) 2026, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -68,4 +68,10 @@ pub fn get_user_downloads() -> Option<PathBuf> {
     std::env::var_os("XDG_DOWNLOAD_DIR")
         .map(|v| v.into())
         .or_else(|| std::env::var_os("HOME").map(|v| PathBuf::from(v).join("Downloads")))
+}
+
+pub fn get_temp_dir() -> Option<PathBuf> {
+    std::env::var_os("TMPDIR")
+        .map(|v| v.into())
+        .or_else(|| Some(PathBuf::from("/tmp")))
 }

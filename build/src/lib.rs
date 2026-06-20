@@ -1,4 +1,4 @@
-// Copyright (c) 2025, BlockProject 3D
+// Copyright (c) 2026, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -67,12 +67,13 @@ impl ModuleMain {
                             .as_ref()
                             .and_then(|v| v.packages.iter().find(|v| v.name.as_ref() == *k))
                             .map(|v| &v.version);
+                        let dep_name = k.replace("-", "_");
                         for feature in v.req_features() {
-                            features.push(format!("{}/{}", k, feature));
+                            features.push(format!("{}/{}", dep_name, feature));
                         }
                         match dep_version {
-                            Some(v) => format!("{}={}", k, v),
-                            None => format!("{}={}", k, v.req()),
+                            Some(v) => format!("{}={}", dep_name, v),
+                            None => format!("{}={}", dep_name, v.req()),
                         }
                     })
                     .join(",")
