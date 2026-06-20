@@ -1,4 +1,4 @@
-// Copyright (c) 2025, BlockProject 3D
+// Copyright (c) 2026, BlockProject 3D
 //
 // All rights reserved.
 //
@@ -257,7 +257,7 @@ impl Shell {
             extern "C" fn useless() {}
             let mut sig2: std::mem::MaybeUninit<libc::sigaction> = std::mem::MaybeUninit::uninit();
             let mut sig: libc::sigaction = unsafe { std::mem::MaybeUninit::zeroed().assume_init() };
-            sig.sa_sigaction = useless as _;
+            sig.sa_sigaction = useless as *const () as _;
             unsafe { libc::sigaction(libc::SIGUSR2, &sig as _, sig2.as_mut_ptr()) };
 
             // Send a signal to the input thread which should raise EINTR on the getchar function.
