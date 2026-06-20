@@ -71,5 +71,7 @@ pub fn get_user_downloads() -> Option<PathBuf> {
 }
 
 pub fn get_temp_dir() -> Option<PathBuf> {
-    std::env::var_os("TMPDIR").map(|v| v.into()).or_else(|| Some(PathBuf::from("/tmp")))
+    std::env::var_os("TMPDIR")
+        .map(|v| v.into())
+        .or_else(|| Some(PathBuf::from("/tmp")))
 }

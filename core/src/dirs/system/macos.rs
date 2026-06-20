@@ -28,7 +28,7 @@
 
 use crate::dirs::system::apple_shared::{
     get_macos_dir, get_macos_dir_fail_if_sandbox, NS_APPLICATION_SUPPORT_DIRECTORY,
-    NS_CACHES_DIRECTORY, NS_DOCUMENT_DIRECTORY, NS_DOWNLOADS_DIRECTORY, NS_LIBRARY_DIRECTORY
+    NS_CACHES_DIRECTORY, NS_DOCUMENT_DIRECTORY, NS_DOWNLOADS_DIRECTORY, NS_LIBRARY_DIRECTORY,
 };
 use std::path::PathBuf;
 
@@ -74,5 +74,9 @@ pub fn get_user_downloads() -> Option<PathBuf> {
 }
 
 pub fn get_temp_dir() -> Option<PathBuf> {
-    Some(crate::dirs::system::apple_shared::get_temp_dir().map(PathBuf::from).unwrap_or(PathBuf::from("/tmp")))
+    Some(
+        crate::dirs::system::apple_shared::get_temp_dir()
+            .map(PathBuf::from)
+            .unwrap_or(PathBuf::from("/tmp")),
+    )
 }

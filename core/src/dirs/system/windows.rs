@@ -31,13 +31,13 @@ use std::os::windows::ffi::OsStringExt;
 use std::path::PathBuf;
 use windows_sys::core::GUID;
 use windows_sys::core::PWSTR;
+use windows_sys::Win32::Foundation::{MAX_PATH, S_OK};
+use windows_sys::Win32::Storage::FileSystem::GetTempPath2W;
 use windows_sys::Win32::System::Com::CoTaskMemFree;
 use windows_sys::Win32::UI::Shell::{
     FOLDERID_Documents, FOLDERID_Downloads, FOLDERID_LocalAppData, FOLDERID_Profile,
     FOLDERID_RoamingAppData, SHGetKnownFolderPath,
 };
-use windows_sys::Win32::Foundation::{S_OK, MAX_PATH};
-use windows_sys::Win32::Storage::FileSystem::GetTempPath2W;
 
 fn get_windows_path(folder: GUID) -> Option<PathBuf> {
     unsafe {

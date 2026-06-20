@@ -197,7 +197,9 @@ pub fn get_temp_dir() -> Option<PathBuf> {
 
 #[cfg(test)]
 mod tests {
-    use crate::dirs::system::{get_user_documents, get_user_downloads, get_user_home, get_temp_dir};
+    use crate::dirs::system::{
+        get_temp_dir, get_user_documents, get_user_downloads, get_user_home,
+    };
 
     #[test]
     fn basic() {
