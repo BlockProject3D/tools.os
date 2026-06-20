@@ -32,8 +32,8 @@ use objc2::class;
 use std::os::raw::c_ulong;
 use std::path::PathBuf;
 
-use crate::apple_helpers::Object;
 use crate::apple_helpers::__msg_send_parse;
+use crate::apple_helpers::Object;
 use crate::apple_helpers::{msg_send, ns_string_to_string};
 
 pub const NS_LIBRARY_DIRECTORY: c_ulong = 5;
@@ -68,8 +68,7 @@ pub fn get_temp_dir() -> Option<String> {
     unsafe {
         let nsfilemanager = class!(NSFileManager);
         let instance: &Object = msg_send![nsfilemanager, defaultManager];
-        let directory: Option<&Object> =
-            msg_send![instance, temporaryDirectory];
+        let directory: Option<&Object> = msg_send![instance, temporaryDirectory];
         if let Some(obj) = directory {
             let str: Option<&Object> = msg_send![obj, path];
             match str {
@@ -86,8 +85,7 @@ pub fn get_user_home() -> Option<String> {
     unsafe {
         let nsfilemanager = class!(NSFileManager);
         let instance: &Object = msg_send![nsfilemanager, defaultManager];
-        let directory: Option<&Object> =
-            msg_send![instance, homeDirectoryForCurrentUser];
+        let directory: Option<&Object> = msg_send![instance, homeDirectoryForCurrentUser];
         if let Some(obj) = directory {
             let str: Option<&Object> = msg_send![obj, path];
             match str {

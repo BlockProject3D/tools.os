@@ -205,7 +205,10 @@ fn check_deps(
                     let mut flag = true;
                     for feature in dep.negative_features.iter() {
                         if features.contains(&**feature) {
-                            error!("Dependency {} contains incompatible feature {}", name, feature);
+                            error!(
+                                "Dependency {} contains incompatible feature {}",
+                                name, feature
+                            );
                             return Err(Error::IncompatibleFeatureSet(name));
                         }
                     }
@@ -217,7 +220,10 @@ fn check_deps(
                             break;
                         }
                         if !features.contains(&**feature) {
-                            error!("Dependency {} is missing a required feature {}", name, feature);
+                            error!(
+                                "Dependency {} is missing a required feature {}",
+                                name, feature
+                            );
                             return Err(Error::IncompatibleFeatureSet(name));
                         }
                     }
@@ -267,7 +273,7 @@ fn check_metadata(
             }));
         }
         check_deps(deps, features, &deps3.master)?;
-        trace!({name=module_name.as_str()}, "Dependencies validated!");
+        trace!({ name = module_name.as_str() }, "Dependencies validated!");
         if let Some(modules) = deps3.get_module_by_dep(module_name.as_str()) {
             debug!(
                 "Checking dependencies for {} against other modules...",
