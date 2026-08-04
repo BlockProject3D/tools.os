@@ -36,7 +36,7 @@ use bp3d_debug::{debug, error, info, trace};
 use std::collections::{HashMap, HashSet};
 use std::ffi::{c_char, CStr};
 use std::fs::File;
-use std::io::Read;
+use std::io::{BufRead, BufReader, Read};
 use std::path::Path;
 use std::sync::Mutex;
 
@@ -155,27 +155,25 @@ fn parse_metadata(bytes: &[u8]) -> crate::module::Result<crate::module::metadata
 }
 
 fn load_metadata(path: &Path) -> crate::module::Result<crate::module::metadata::Metadata> {
-    let mut file = File::open(path).map_err(Error::Io)?;
-    let mut buffer: [u8; 8192] = [0; 8192];
+    let mut file = BufReader::new(File::open(path).map_err(Error::Io)?);
     let mut v = Vec::new();
-    while file.read(&mut buffer).map_err(Error::Io)? > 0 {
-        let mut slice = &buffer[..];
-        while let Some(pos) = slice.iter().position(|v| *v == b'B') {
-            let inner = &slice[pos..];
-            let end = inner
-                .iter()
-                .position(|v| *v == 0)
-                .unwrap_or(inner.len() - 1);
-            v.extend_from_slice(&inner[..end + 1]);
-            if v[v.len() - 1] == 0 {
-                if v.starts_with(MOD_HEADER) {
-                    // We found the module metadata.
-                    return parse_metadata(&v);
-                }
-                v.clear();
-                slice = &inner[end + 1..];
-            } else {
+    let mut len;
+    let mut byte = [0];
+    loop {
+        len = file.read(&mut byte).map_err(Error::Io)?;
+        if len == 0 {
+            break;
+        }
+        if byte[0] == b'B' {
+            v.push(byte[0]);
+            file.read_until(0, &mut v).map_err(Error::Io)?;
+            if v.is_empty() || *v.last().unwrap() != 0 {
                 break;
+            }
+            if v.starts_with(MOD_HEADER) {
+                return parse_metadata(&v);
+            } else {
+                v.clear()
             }
         }
     }

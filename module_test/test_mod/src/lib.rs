@@ -48,13 +48,11 @@ mod tests {
 
 #[inline(never)]
 fn module_open() {
-    println!("module_open");
     info!("Module open from bp3d-debug");
 }
 
 #[inline(never)]
 fn module_close() {
-    println!("module_close");
     info!("Module close from bp3d-debug");
 }
 
