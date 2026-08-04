@@ -120,7 +120,7 @@ impl ModuleLoader {
             last_module_id: 0,
         };
         this._add_public_dependency(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"), ["*"]);
-        this._add_public_dependency("bp3d-debug", "1.0.0", ["*"]);
+        this._add_public_dependency("bp3d-debug", "1.0.3", ["*"]);
         if !MODULE_LOADER.install(this) {
             panic!("attempt to initialize module loader twice");
         }
