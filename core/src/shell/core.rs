@@ -231,12 +231,12 @@ impl Shell {
     pub fn new<T: SendChannel>(prompt: &'static str, master_send_ch: T) -> Self {
         let (send_ch, recv_ch) = mpsc::channel();
         let motherfuckingrust = send_ch.clone();
-        let input_thread = std::thread::spawn(|| {
+        let input_thread = std::thread::Builder::new().name("Console IO thread".into()).spawn(|| {
             input_thread(motherfuckingrust);
-        });
-        let app_thread = std::thread::spawn(move || {
+        }).expect("Failed to spawn console IO thread");
+        let app_thread = std::thread::Builder::new().name("Console thread".into()).spawn(move || {
             application_thread(prompt, recv_ch, master_send_ch);
-        });
+        }).expect("Failed to spawn console thread");
         Self {
             _os: Terminal::new(),
             input_thread,
